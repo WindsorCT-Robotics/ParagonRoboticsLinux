@@ -14,9 +14,12 @@ concurrency:
   # only run one build at a time
   group: ${{ github.workflow }}-${{ github.ref || github.run_id }}
   cancel-in-progress: true
+env:
+  WPILIB_VERSION: 2027.0.0-alpha-7
+  WPILIB_YEAR: 2027_alpha7
 jobs:
   bluebuild:
-    name: Build Custom Image
+    name: Build Paragon Robotics Linux
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -29,8 +32,201 @@ jobs:
           # !! Add your recipes here
           - recipe.yml
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        
+      - name: Cache OnShape SVG Logo
+        id: processed-onshape-cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            config/files/usr/share/icons/hicolor/scalable/apps/com.onshape.app.svg
+          key: ${{ runner.os }}-onshape-logo-cache-v1
+          
+      - name: Download OnShape SVG Logo
+        if: steps.processed-onshape-cache.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p config/files/usr/share/icons/hicolor/scalable/apps/
+          curl -L "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/onshape-dark.svg" -o config/files/usr/share/icons/hicolor/scalable/apps/com.onshape.app.svg
+
+      # Look for a cached WPILib installation, if it exists, to speed up builds
+      - name: Cache WPILib & VS Code Installation
+        id: processed-frc-cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            config/files/etc/skel/.local/share/wpilib/${{ env.WPILIB_YEAR }}
+            config/files/etc/skel/.local/share/applications/AdvantageScope_WPILib_2027_alpha7.desktop
+            config/files/etc/skel/.local/share/applications/DataLogTool_2027_alpha7.desktop
+            config/files/etc/skel/.local/share/applications/Elastic_WPILib_2027_alpha7.desktop
+            config/files/etc/skel/.local/share/applications/Glass_2027_alpha7.desktop
+            config/files/etc/skel/.local/share/applications/OutlineViewer_2027_alpha7.desktop
+            config/files/etc/skel/.local/share/applications/SysId_2027_alpha7.desktop
+            config/files/etc/skel/.local/share/applications/WPIcal_2027_alpha7.desktop
+            config/files/etc/skel/.local/share/applications/WPILib_Documentation_2027_alpha7.desktop
+            config/files/etc/skel/.local/share/applications/WPILib_VS_Code_2027_alpha7.desktop
+          key: processed-wpilib-${{ env.WPILIB_VERSION }}
+
+      # On cache miss, download and install WPILib and VS Code
+      - name: Generate WPILib & VS Code Installation on Cache Miss
+        if: steps.processed-frc-cache.outputs.cache-hit != 'true'
+        run: |
+          TEMP_DIR=$(mktemp -d)
+          cd "$TEMP_DIR"
+          
+          echo "Downloading combined installer package..."
+          curl -L "https://packages.wpilib.workers.dev/installer/v${{ env.WPILIB_VERSION }}/WPILib_Linux-x64-${{ env.WPILIB_VERSION }}.tar.gz" | tar -xz --strip-components=1
+          
+          echo "Installing WPILib and VS Code..."
+          chmod +x ./WPILibInstaller-CLI
+          ./WPILibInstaller-CLI --install-mode all -y
+          
+          # Prepare the BlueBuild skeleton target directories
+          mkdir -p "$GITHUB_WORKSPACE/config/files/etc/skel/.local/share"
+          
+          # Move the processed localized assets 
+          if [ -d "$HOME/.local/share/wpilib" ]; then
+            mv "$HOME/.local/share/wpilib/${{ env.WPILIB_YEAR}}" "$GITHUB_WORKSPACE/config/files/etc/skel/.local/share/${{ env.WPILIB_YEAR}}"
+          fi
+          
+          # Move the dynamically generated shortcuts
+          if [ -d "$HOME/.local/share/applications" ]; then
+            mv "$HOME/.local/share/applications/AdvantageScope_WPILib_2027_alpha7.desktop" "$GITHUB_WORKSPACE/config/files/etc/skel/.local/share/applications/"
+            mv "$HOME/.local/share/applications/DataLogTool_2027_alpha7.desktop" "$GITHUB_WORKSPACE/config/files/etc/skel/.local/share/applications/"
+            mv "$HOME/.local/share/applications/Elastic_WPILib_2027_alpha7.desktop" "$GITHUB_WORKSPACE/config/files/etc/skel/.local/share/applications/"
+            mv "$HOME/.local/share/applications/Glass_2027_alpha7.desktop" "$GITHUB_WORKSPACE/config/files/etc/skel/.local/share/applications/"
+            mv "$HOME/.local/share/applications/OutlineViewer_2027_alpha7.desktop" "$GITHUB_WORKSPACE/config/files/etc/skel/.local/share/applications/"
+            mv "$HOME/.local/share/applications/SysId_2027_alpha7.desktop" "$GITHUB_WORKSPACE/config/files/etc/skel/.local/share/applications/"
+            mv "$HOME/.local/share/applications/WPIcal_2027_alpha7.desktop" "$GITHUB_WORKSPACE/config/files/etc/skel/.local/share/applications/"
+            mv "$HOME/.local/share/applications/WPILib_Documentation_2027_alpha7.desktop" "$GITHUB_WORKSPACE/config/files/etc/skel/.local/share/applications/"
+            mv "$HOME/.local/share/applications/WPILib_VS_Code_2027_alpha7.desktop" "$GITHUB_WORKSPACE/config/files/etc/skel/.local/share/applications/"
+          fi
+          
+          cd $GITHUB_WORKSPACE
+          rm -rf "$TEMP_DIR"
+
+      # Cache and install latest JetBrains Toolbox and Rider apps
+      - name: Get latest JetBrains Toolbox and Rider versions
+        id: jetbrains-versions
+        run: |
+          # Get the latest JetBrains Toolbox version
+          TOOLBOX_VERSION=$(curl -s https://data.services.jetbrains.com/products/releases?code=TBA&latest=true&type=release | jq -r '.TBA[0].version')
+          
+          # Get the latest JetBrains Rider version
+          RIDER_VERSION=$(curl -s https://data.services.jetbrains.com/products/releases?code=RD&latest=true&type=release | jq -r '.RD[0].version')
+
+          # Set outputs for use in subsequent steps
+          echo "toolbox_version=$TOOLBOX_VERSION" >> $GITHUB_OUTPUT
+          echo "rider_version=$RIDER_VERSION" >> $GITHUB_OUTPUT
+          echo "Discovered Live Toolbox Version: $TOOLBOX_VERSION"
+          echo "Discovered Live Rider Version: $RIDER_VERSION"
+          
+      - name: Cache JetBrains Toolbox and Rider Installation
+        id: processed-jetbrains-cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            config/files/etc/skel/.local/share/JetBrains/
+            config/files/etc/skel/.local/share/applications/jetbrains-*.desktop
+          key: jetbrains-cache-${{ steps.jetbrains-versions.outputs.toolbox_version }}-${{ steps.jetbrains-versions.outputs.rider_version }}
+
+      - name: Download and Install JetBrains Toolbox and Rider on Cache Miss
+        if: steps.processed-jetbrains-cache.outputs.cache-hit != 'true'
+        run: |
+          SKEL_APPS="$GITHUB_WORKSPACE/config/files/etc/skel/.local/share/JetBrains/Toolbox/bin"
+          SKEL_RIDER="$GITHUB_WORKSPACE/config/files/etc/skel/.local/share/JetBrains/apps/rider/bin"
+          SKEL_SHORTCUTS="$GITHUB_WORKSPACE/config/files/etc/skel/.local/share/applications"
+          mkdir -p "$SKEL_APPS" "$SKEL_RIDER" "$SKEL_SHORTCUTS"
+
+          echo "Downloading JetBrains Toolbox..."
+          TBX_URL=$(curl -s 'https://data.services.jetbrains.com/products/releases?code=TBA&latest=true&type=release' | jq -r '.TBA[0].downloads.linux.link')
+          curl -L "$TBX_URL" | tar -xz -C "$SKEL_APPS" --strip-components=2 "*/jetbrains-toolbox"
+
+          echo "Downloading JetBrains Rider Engine..."
+          RIDER_URL=$(curl -s 'https://data.services.jetbrains.com/products/releases?code=RD&latest=true&type=release' | jq -r '.RD[0].downloads.linux.link')
+          curl -L "$RIDER_URL" | tar -xz -C "$SKEL_RIDER" --strip-components=1
+
+          cat << 'EOF' > "$SKEL_SHORTCUTS/jetbrains-rider.desktop"
+          [Desktop Entry]
+          Version=1.0
+          Type=Application
+          Name=JetBrains Rider
+          Comment=Cross-Platform .NET IDE
+          Exec=/home/%u/.local/share/JetBrains/apps/rider/bin/rider.sh
+          Icon=/home/%u/.local/share/JetBrains/apps/rider/bin/rider.svg
+          Terminal=false
+          Categories=Development;IDE;
+          StartupNotify=true
+          EOF
+
+          cat << 'EOF' > "$SKEL_SHORTCUTS/jetbrains-toolbox.desktop"
+          [Desktop Entry]
+          Version=1.0
+          Type=Application
+          Name=JetBrains Toolbox
+          Comment=Manage JetBrains IDEs
+          Exec=/home/%u/.local/share/JetBrains/Toolbox/bin/jetbrains-toolbox
+          Icon=/home/%u/.local/share/JetBrains/Toolbox/bin/toolbox.svg
+          Terminal=false
+          Categories=Development;IDE;
+          StartupNotify=true
+          EOF
+      # Set up Vivalidi custom profile
+      - name: Inject Team Vivaldi Configuration Profile
+        run: |
+          VIVALDI_SKEL_DIR="config/files/etc/skel/.var/app/com.vivaldi.Vivaldi/config/vivaldi/Default"
+          mkdir -p "$VIVALDI_SKEL_DIR"
+          
+          # 1. Inject the Privacy Preferences file (Enables internal ad/tracker blocker blocks)
+          cat << 'EOF' > "$VIVALDI_SKEL_DIR/Preferences"
+          {
+            "vivaldi": {
+              "ad_blocking": {
+                "ad_block_level": 2,
+                "tracker_block_level": 2
+              }
+            },
+            "privacy": {
+              "donottrack": {
+                "enabled": true
+              }
+            }
+          }
+          EOF
+          
+          # 2. Inject the FRC Team Bookmark Index File
+          cat << 'EOF' > "$VIVALDI_SKEL_DIR/Bookmarks"
+          {
+             "checksum": "",
+             "roots": {
+                "bookmark_bar": {
+                   "children": [
+                      {
+                         "name": "The Blue Alliance",
+                         "type": "url",
+                         "url": "https://thebluealliance.com"
+                      },
+                      {
+                         "name": "Team GitHub Repository",
+                         "type": "url",
+                         "url": "https://github.com/WindsorCT-Robotics"
+                      },
+                      {
+                         "name": "Team Codeberg Repository",
+                         "type": "url",
+                         "url": "https://codeberg.org/WindsorCT-Robotics"
+                      }
+                   ],
+                   "name": "Bookmark Bar",
+                   "type": "folder"
+                }
+             },
+             "version": 1
+          }
+          EOF
+
       # the build is fully handled by the reusable github action
-      - name: Build Custom Image
+      - name: Build Paragon Robotics Linux
         uses: blue-build/github-action@v1.13
         with:
           recipe: ${{ matrix.recipe }}

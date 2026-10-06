@@ -1,13 +1,16 @@
 ---
 # yaml-language-server: $schema=https://schema.blue-build.org/recipe-v1.json
 # image will be published to ghcr.io/<user>/<name>
-name: template
+name: Paragon Robotics Linux
 # description will be included in the image's metadata
-description: This is my personal OS image.
+description: A custom Linux image for Paragon Robotics, based on Aurora DX.
 
 # the base image to build on top of (FROM) and the version tag to use
-base-image: ghcr.io/ublue-os/silverblue-main
+base-image: ghcr.io/ublue-os/aurora-dx
 image-version: latest # You can pin to a specific version of Fedora as well
+
+platforms:
+  - linux/amd64
 
 # module configuration, executed in order
 # you can include multiple instances of the same module
@@ -19,18 +22,16 @@ modules:
 
   - type: dnf
     repos:
+      files:
+        - https://cli.github.com/packages/rpm/gh-cli.repo
       copr:
-        - atim/starship
+        - lihaohong/forgejo-cli
     install:
       packages:
-        - micro
-        - starship
-    remove:
-      packages:
-        # example: removing firefox (in favor of the flatpak)
-        # "firefox" is the main package, "firefox-langpacks" is a dependency
-        - firefox
-        - firefox-langpacks # also remove firefox dependency (not required for all packages, this is a special case)
+        - gh
+        - forgejo-cli
+        - dotnet-sdk-10.0
+    cleanup: true
 
   - type: default-flatpaks
     configurations:
@@ -38,8 +39,15 @@ modules:
         scope: system
         # If no repo information is specified, Flathub will be used by default
         install: # system flatpaks we want all users to have and not remove
-          - org.mozilla.firefox
-          - org.gnome.Loupe
+          - dev.vencord.Vesktop
+          - com.vivaldi.Vivaldi
+          - com.github.tchx84.Flatseal
+          - com.bitwarden.desktop
+          - com.jetbrains.rider
       - scope: user # Also add Flathub user repo, but no user packages
+      
+  - type: script
+    scripts:
+      - setup-onshape-and-browser-hardware-accel.sh
 
   - type: signing # this sets up the proper policy & signing files for signed images to work fully
