@@ -32,7 +32,7 @@ jobs:
 
       - name: Restore OnShape SVG Logo cache
         id: processed-onshape-cache
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v6
         with:
           path: |
             files/system/usr/share/icons/hicolor/scalable/apps/com.onshape.app.svg
@@ -46,7 +46,7 @@ jobs:
 
       - name: Save OnShape SVG Logo cache
         if: always() && steps.processed-onshape-cache.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v6
         with:
           path: |
             files/system/usr/share/icons/hicolor/scalable/apps/com.onshape.app.svg
@@ -55,7 +55,7 @@ jobs:
       # Look for a cached WPILib installation, if it exists, to speed up builds
       - name: Restore WPILib & VS Code cache
         id: processed-frc-cache
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v6
         with:
           path: |
             files/system/etc/skel/.local/share/wpilib/${{ env.WPILIB_YEAR }}
@@ -112,7 +112,7 @@ jobs:
 
       - name: Save WPILib cache
         if: always() && steps.processed-frc-cache.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v6
         with:
           path: |
             files/system/etc/skel/.local/share/wpilib/${{ env.WPILIB_YEAR }}
@@ -145,7 +145,7 @@ jobs:
 
       - name: Restore JetBrains cache
         id: processed-jetbrains-cache
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v6
         with:
           path: |
             files/system/etc/skel/.local/share/JetBrains/
@@ -196,7 +196,7 @@ jobs:
 
       - name: Save JetBrains cache
         if: always() && steps.processed-jetbrains-cache.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v6
         with:
           path: |
             files/system/etc/skel/.local/share/JetBrains/
@@ -222,14 +222,14 @@ jobs:
         uses: actions/checkout@v7
 
       - name: Restore OnShape SVG Logo cache
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v6
         with:
           path: |
             files/system/usr/share/icons/hicolor/scalable/apps/com.onshape.app.svg
           key: ${{ runner.os }}-onshape-logo-cache-v1
 
       - name: Restore WPILib & VS Code cache
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v6
         with:
           path: |
             files/system/etc/skel/.local/share/wpilib/${{ env.WPILIB_YEAR }}
@@ -245,7 +245,7 @@ jobs:
           key: processed-wpilib-${{ env.WPILIB_VERSION }}
 
       - name: Restore JetBrains cache
-        uses: actions/cache/restore@v4
+        uses: actions/cache/restore@v6
         with:
           path: |
             files/system/etc/skel/.local/share/JetBrains/
