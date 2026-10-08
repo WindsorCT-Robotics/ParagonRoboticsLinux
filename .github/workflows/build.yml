@@ -10,49 +10,52 @@ on:
 
   pull_request:
   workflow_dispatch: # allow manually triggering builds
+
 concurrency:
   # only run one build at a time
   group: ${{ github.workflow }}-${{ github.ref || github.run_id }}
   cancel-in-progress: true
+
 env:
   WPILIB_VERSION: 2027.0.0-alpha-7
   WPILIB_YEAR: 2027_alpha7
+
 jobs:
-  bluebuild:
-    name: Build Paragon Robotics Linux
+  prepare-cache:
+    name: Prepare shared build caches
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      packages: write
-      id-token: write
-    strategy:
-      fail-fast: false # stop GH from cancelling all matrix builds if one fails
-      matrix:
-        recipe:
-          # !! Add your recipes here
-          - recipe.yml
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
-        
-      - name: Cache OnShape SVG Logo
+
+      - name: Restore OnShape SVG Logo cache
         id: processed-onshape-cache
-        uses: actions/cache@v6
+        uses: actions/cache/restore@v4
         with:
           path: |
             files/system/usr/share/icons/hicolor/scalable/apps/com.onshape.app.svg
           key: ${{ runner.os }}-onshape-logo-cache-v1
-          
+
       - name: Download OnShape SVG Logo
         if: steps.processed-onshape-cache.outputs.cache-hit != 'true'
         run: |
           mkdir -p files/system/usr/share/icons/hicolor/scalable/apps/
           curl -L "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/onshape-dark.svg" -o files/system/usr/share/icons/hicolor/scalable/apps/com.onshape.app.svg
 
+      - name: Save OnShape SVG Logo cache
+        if: always() && steps.processed-onshape-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            files/system/usr/share/icons/hicolor/scalable/apps/com.onshape.app.svg
+          key: ${{ runner.os }}-onshape-logo-cache-v1
+
       # Look for a cached WPILib installation, if it exists, to speed up builds
-      - name: Cache WPILib & VS Code Installation
+      - name: Restore WPILib & VS Code cache
         id: processed-frc-cache
-        uses: actions/cache@v6
+        uses: actions/cache/restore@v4
         with:
           path: |
             files/system/etc/skel/.local/share/wpilib/${{ env.WPILIB_YEAR }}
@@ -73,24 +76,24 @@ jobs:
         run: |
           TEMP_DIR=$(mktemp -d)
           cd "$TEMP_DIR"
-          
+
           echo "Downloading combined installer package..."
           curl -L "https://packages.wpilib.workers.dev/installer/v${{ env.WPILIB_VERSION }}/WPILib_Linux-x64-${{ env.WPILIB_VERSION }}.tar.gz" | tar -xz --strip-components=1
-          
+
           echo "Installing WPILib and VS Code..."
           chmod +x ./WPILibInstaller-CLI
           ./WPILibInstaller-CLI --install-mode all -y
-          
+
           # Prepare the BlueBuild skeleton target directories
           mkdir -p "$GITHUB_WORKSPACE/files/system/etc/skel/.local/share"
           mkdir -p "$GITHUB_WORKSPACE/files/system/etc/skel/.local/share/wpilib"
           mkdir -p "$GITHUB_WORKSPACE/files/system/etc/skel/.local/share/applications"
-          
+
           # Move the processed localized assets
           if [ -d "$HOME/.local/share/wpilib/${{ env.WPILIB_YEAR}}" ]; then
             mv "$HOME/.local/share/wpilib/${{ env.WPILIB_YEAR}}" "$GITHUB_WORKSPACE/files/system/etc/skel/.local/share/wpilib/"
           fi
-          
+
           # Move the dynamically generated shortcuts
           if [ -d "$HOME/.local/share/applications" ]; then
             mv "$HOME/.local/share/applications/AdvantageScope_WPILib_2027_alpha7.desktop" "$GITHUB_WORKSPACE/files/system/etc/skel/.local/share/applications/"
@@ -103,9 +106,26 @@ jobs:
             mv "$HOME/.local/share/applications/WPILib_Documentation_2027_alpha7.desktop" "$GITHUB_WORKSPACE/files/system/etc/skel/.local/share/applications/"
             mv "$HOME/.local/share/applications/WPILib_VS_Code_2027_alpha7.desktop" "$GITHUB_WORKSPACE/files/system/etc/skel/.local/share/applications/"
           fi
-          
+
           cd $GITHUB_WORKSPACE
           rm -rf "$TEMP_DIR"
+
+      - name: Save WPILib cache
+        if: always() && steps.processed-frc-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            files/system/etc/skel/.local/share/wpilib/${{ env.WPILIB_YEAR }}
+            files/system/etc/skel/.local/share/applications/AdvantageScope_WPILib_2027_alpha7.desktop
+            files/system/etc/skel/.local/share/applications/DataLogTool_2027_alpha7.desktop
+            files/system/etc/skel/.local/share/applications/Elastic_WPILib_2027_alpha7.desktop
+            files/system/etc/skel/.local/share/applications/Glass_2027_alpha7.desktop
+            files/system/etc/skel/.local/share/applications/OutlineViewer_2027_alpha7.desktop
+            files/system/etc/skel/.local/share/applications/SysId_2027_alpha7.desktop
+            files/system/etc/skel/.local/share/applications/WPIcal_2027_alpha7.desktop
+            files/system/etc/skel/.local/share/applications/WPILib_Documentation_2027_alpha7.desktop
+            files/system/etc/skel/.local/share/applications/WPILib_VS_Code_2027_alpha7.desktop
+          key: processed-wpilib-${{ env.WPILIB_VERSION }}
 
       # Cache and install latest JetBrains Toolbox and Rider apps
       - name: Get latest JetBrains Toolbox and Rider versions
@@ -123,9 +143,9 @@ jobs:
           echo "Discovered Live Toolbox Version: $TOOLBOX_VERSION"
           echo "Discovered Live Rider Version: $RIDER_VERSION"
 
-      - name: Cache JetBrains Toolbox and Rider Installation
+      - name: Restore JetBrains cache
         id: processed-jetbrains-cache
-        uses: actions/cache@v6
+        uses: actions/cache/restore@v4
         with:
           path: |
             files/system/etc/skel/.local/share/JetBrains/
@@ -173,12 +193,71 @@ jobs:
           Categories=Development;IDE;
           StartupNotify=true
           EOF
-      # Set up Vivalidi custom profile
+
+      - name: Save JetBrains cache
+        if: always() && steps.processed-jetbrains-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: |
+            files/system/etc/skel/.local/share/JetBrains/
+            files/system/etc/skel/.local/share/applications/jetbrains-*.desktop
+          key: jetbrains-cache-${{ steps.jetbrains-versions.outputs.toolbox_version }}-${{ steps.jetbrains-versions.outputs.rider_version }}
+
+  bluebuild:
+    needs: prepare-cache
+    name: Build Paragon Robotics Linux
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+    strategy:
+      fail-fast: false # stop GH from cancelling all matrix builds if one fails
+      matrix:
+        recipe:
+          # !! Add your recipes here
+          - recipe.yml
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Restore OnShape SVG Logo cache
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            files/system/usr/share/icons/hicolor/scalable/apps/com.onshape.app.svg
+          key: ${{ runner.os }}-onshape-logo-cache-v1
+
+      - name: Restore WPILib & VS Code cache
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            files/system/etc/skel/.local/share/wpilib/${{ env.WPILIB_YEAR }}
+            files/system/etc/skel/.local/share/applications/AdvantageScope_WPILib_2027_alpha7.desktop
+            files/system/etc/skel/.local/share/applications/DataLogTool_2027_alpha7.desktop
+            files/system/etc/skel/.local/share/applications/Elastic_WPILib_2027_alpha7.desktop
+            files/system/etc/skel/.local/share/applications/Glass_2027_alpha7.desktop
+            files/system/etc/skel/.local/share/applications/OutlineViewer_2027_alpha7.desktop
+            files/system/etc/skel/.local/share/applications/SysId_2027_alpha7.desktop
+            files/system/etc/skel/.local/share/applications/WPIcal_2027_alpha7.desktop
+            files/system/etc/skel/.local/share/applications/WPILib_Documentation_2027_alpha7.desktop
+            files/system/etc/skel/.local/share/applications/WPILib_VS_Code_2027_alpha7.desktop
+          key: processed-wpilib-${{ env.WPILIB_VERSION }}
+
+      - name: Restore JetBrains cache
+        uses: actions/cache/restore@v4
+        with:
+          path: |
+            files/system/etc/skel/.local/share/JetBrains/
+            files/system/etc/skel/.local/share/applications/jetbrains-*.desktop
+          key: jetbrains-cache-${{ steps.jetbrains-versions.outputs.toolbox_version }}-${{ steps.jetbrains-versions.outputs.rider_version }}
+
+      # Set up Vivaldi custom profile
       - name: Inject Team Vivaldi Configuration Profile
         run: |
           VIVALDI_SKEL_DIR="files/system/etc/skel/.var/app/com.vivaldi.Vivaldi/config/vivaldi/Default"
           mkdir -p "$VIVALDI_SKEL_DIR"
-          
+
           # 1. Inject the Privacy Preferences file (Enables internal ad/tracker blocker blocks)
           cat << 'EOF' > "$VIVALDI_SKEL_DIR/Preferences"
           {
@@ -195,7 +274,7 @@ jobs:
             }
           }
           EOF
-          
+
           # 2. Inject the FRC Team Bookmark Index File
           cat << 'EOF' > "$VIVALDI_SKEL_DIR/Bookmarks"
           {
