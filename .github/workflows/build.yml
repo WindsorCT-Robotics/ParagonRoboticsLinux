@@ -176,7 +176,7 @@ jobs:
       # Set up Vivalidi custom profile
       - name: Inject Team Vivaldi Configuration Profile
         run: |
-          VIVALDI_SKEL_DIR="files/system/etc/skel/.var/app/com.vivaldi.Vivaldi/vivaldi/Default"
+          VIVALDI_SKEL_DIR="files/system/etc/skel/.var/app/com.vivaldi.Vivaldi/config/vivaldi/Default"
           mkdir -p "$VIVALDI_SKEL_DIR"
           
           # 1. Inject the Privacy Preferences file (Enables internal ad/tracker blocker blocks)
