@@ -42,7 +42,6 @@ modules:
           - com.vivaldi.Vivaldi
           - com.github.tchx84.Flatseal
           - com.bitwarden.desktop
-          - com.jetbrains.rider
       - scope: user # Also add Flathub user repo, but no user packages
       
   - type: script
