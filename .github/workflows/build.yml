@@ -40,14 +40,14 @@ jobs:
         uses: actions/cache@v6
         with:
           path: |
-            config/files/system/usr/share/icons/hicolor/scalable/apps/com.onshape.app.svg
+            files/system/usr/share/icons/hicolor/scalable/apps/com.onshape.app.svg
           key: ${{ runner.os }}-onshape-logo-cache-v1
           
       - name: Download OnShape SVG Logo
         if: steps.processed-onshape-cache.outputs.cache-hit != 'true'
         run: |
-          mkdir -p config/files/system/usr/share/icons/hicolor/scalable/apps/
-          curl -L "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/onshape-dark.svg" -o config/files/system/usr/share/icons/hicolor/scalable/apps/com.onshape.app.svg
+          mkdir -p files/system/usr/share/icons/hicolor/scalable/apps/
+          curl -L "https://cdn.jsdelivr.net/gh/homarr-labs/dashboard-icons/svg/onshape-dark.svg" -o files/system/usr/share/icons/hicolor/scalable/apps/com.onshape.app.svg
 
       # Look for a cached WPILib installation, if it exists, to speed up builds
       - name: Cache WPILib & VS Code Installation
@@ -55,16 +55,16 @@ jobs:
         uses: actions/cache@v6
         with:
           path: |
-            config/files/system/etc/skel/.local/share/wpilib/${{ env.WPILIB_YEAR }}
-            config/files/system/etc/skel/.local/share/applications/AdvantageScope_WPILib_2027_alpha7.desktop
-            config/files/system/etc/skel/.local/share/applications/DataLogTool_2027_alpha7.desktop
-            config/files/system/etc/skel/.local/share/applications/Elastic_WPILib_2027_alpha7.desktop
-            config/files/system/etc/skel/.local/share/applications/Glass_2027_alpha7.desktop
-            config/files/system/etc/skel/.local/share/applications/OutlineViewer_2027_alpha7.desktop
-            config/files/system/etc/skel/.local/share/applications/SysId_2027_alpha7.desktop
-            config/files/system/etc/skel/.local/share/applications/WPIcal_2027_alpha7.desktop
-            config/files/system/etc/skel/.local/share/applications/WPILib_Documentation_2027_alpha7.desktop
-            config/files/system/etc/skel/.local/share/applications/WPILib_VS_Code_2027_alpha7.desktop
+            files/system/etc/skel/.local/share/wpilib/${{ env.WPILIB_YEAR }}
+            files/system/etc/skel/.local/share/applications/AdvantageScope_WPILib_2027_alpha7.desktop
+            files/system/etc/skel/.local/share/applications/DataLogTool_2027_alpha7.desktop
+            files/system/etc/skel/.local/share/applications/Elastic_WPILib_2027_alpha7.desktop
+            files/system/etc/skel/.local/share/applications/Glass_2027_alpha7.desktop
+            files/system/etc/skel/.local/share/applications/OutlineViewer_2027_alpha7.desktop
+            files/system/etc/skel/.local/share/applications/SysId_2027_alpha7.desktop
+            files/system/etc/skel/.local/share/applications/WPIcal_2027_alpha7.desktop
+            files/system/etc/skel/.local/share/applications/WPILib_Documentation_2027_alpha7.desktop
+            files/system/etc/skel/.local/share/applications/WPILib_VS_Code_2027_alpha7.desktop
           key: processed-wpilib-${{ env.WPILIB_VERSION }}
 
       # On cache miss, download and install WPILib and VS Code
@@ -82,26 +82,26 @@ jobs:
           ./WPILibInstaller-CLI --install-mode all -y
           
           # Prepare the BlueBuild skeleton target directories
-          mkdir -p "$GITHUB_WORKSPACE/config/files/system/etc/skel/.local/share"
-          mkdir -p "$GITHUB_WORKSPACE/config/files/system/etc/skel/.local/share/wpilib"
-          mkdir -p "$GITHUB_WORKSPACE/config/files/system/etc/skel/.local/share/applications"
+          mkdir -p "$GITHUB_WORKSPACE/files/system/etc/skel/.local/share"
+          mkdir -p "$GITHUB_WORKSPACE/files/system/etc/skel/.local/share/wpilib"
+          mkdir -p "$GITHUB_WORKSPACE/files/system/etc/skel/.local/share/applications"
           
           # Move the processed localized assets
           if [ -d "$HOME/.local/share/wpilib/${{ env.WPILIB_YEAR}}" ]; then
-            mv "$HOME/.local/share/wpilib/${{ env.WPILIB_YEAR}}" "$GITHUB_WORKSPACE/config/files/system/etc/skel/.local/share/wpilib/"
+            mv "$HOME/.local/share/wpilib/${{ env.WPILIB_YEAR}}" "$GITHUB_WORKSPACE/files/system/etc/skel/.local/share/wpilib/"
           fi
           
           # Move the dynamically generated shortcuts
           if [ -d "$HOME/.local/share/applications" ]; then
-            mv "$HOME/.local/share/applications/AdvantageScope_WPILib_2027_alpha7.desktop" "$GITHUB_WORKSPACE/config/files/system/etc/skel/.local/share/applications/"
-            mv "$HOME/.local/share/applications/DataLogTool_2027_alpha7.desktop" "$GITHUB_WORKSPACE/config/files/system/etc/skel/.local/share/applications/"
-            mv "$HOME/.local/share/applications/Elastic_WPILib_2027_alpha7.desktop" "$GITHUB_WORKSPACE/config/files/system/etc/skel/.local/share/applications/"
-            mv "$HOME/.local/share/applications/Glass_2027_alpha7.desktop" "$GITHUB_WORKSPACE/config/files/system/etc/skel/.local/share/applications/"
-            mv "$HOME/.local/share/applications/OutlineViewer_2027_alpha7.desktop" "$GITHUB_WORKSPACE/config/files/system/etc/skel/.local/share/applications/"
-            mv "$HOME/.local/share/applications/SysId_2027_alpha7.desktop" "$GITHUB_WORKSPACE/config/files/system/etc/skel/.local/share/applications/"
-            mv "$HOME/.local/share/applications/WPIcal_2027_alpha7.desktop" "$GITHUB_WORKSPACE/config/files/system/etc/skel/.local/share/applications/"
-            mv "$HOME/.local/share/applications/WPILib_Documentation_2027_alpha7.desktop" "$GITHUB_WORKSPACE/config/files/system/etc/skel/.local/share/applications/"
-            mv "$HOME/.local/share/applications/WPILib_VS_Code_2027_alpha7.desktop" "$GITHUB_WORKSPACE/config/files/system/etc/skel/.local/share/applications/"
+            mv "$HOME/.local/share/applications/AdvantageScope_WPILib_2027_alpha7.desktop" "$GITHUB_WORKSPACE/files/system/etc/skel/.local/share/applications/"
+            mv "$HOME/.local/share/applications/DataLogTool_2027_alpha7.desktop" "$GITHUB_WORKSPACE/files/system/etc/skel/.local/share/applications/"
+            mv "$HOME/.local/share/applications/Elastic_WPILib_2027_alpha7.desktop" "$GITHUB_WORKSPACE/files/system/etc/skel/.local/share/applications/"
+            mv "$HOME/.local/share/applications/Glass_2027_alpha7.desktop" "$GITHUB_WORKSPACE/files/system/etc/skel/.local/share/applications/"
+            mv "$HOME/.local/share/applications/OutlineViewer_2027_alpha7.desktop" "$GITHUB_WORKSPACE/files/system/etc/skel/.local/share/applications/"
+            mv "$HOME/.local/share/applications/SysId_2027_alpha7.desktop" "$GITHUB_WORKSPACE/files/system/etc/skel/.local/share/applications/"
+            mv "$HOME/.local/share/applications/WPIcal_2027_alpha7.desktop" "$GITHUB_WORKSPACE/files/system/etc/skel/.local/share/applications/"
+            mv "$HOME/.local/share/applications/WPILib_Documentation_2027_alpha7.desktop" "$GITHUB_WORKSPACE/files/system/etc/skel/.local/share/applications/"
+            mv "$HOME/.local/share/applications/WPILib_VS_Code_2027_alpha7.desktop" "$GITHUB_WORKSPACE/files/system/etc/skel/.local/share/applications/"
           fi
           
           cd $GITHUB_WORKSPACE
@@ -128,16 +128,16 @@ jobs:
         uses: actions/cache@v6
         with:
           path: |
-            config/files/system/etc/skel/.local/share/JetBrains/
-            config/files/system/etc/skel/.local/share/applications/jetbrains-*.desktop
+            files/system/etc/skel/.local/share/JetBrains/
+            files/system/etc/skel/.local/share/applications/jetbrains-*.desktop
           key: jetbrains-cache-${{ steps.jetbrains-versions.outputs.toolbox_version }}-${{ steps.jetbrains-versions.outputs.rider_version }}
 
       - name: Download and Install JetBrains Toolbox and Rider on Cache Miss
         if: steps.processed-jetbrains-cache.outputs.cache-hit != 'true'
         run: |
-          SKEL_APPS="$GITHUB_WORKSPACE/config/files/system/etc/skel/.local/share/JetBrains/Toolbox/bin"
-          SKEL_RIDER="$GITHUB_WORKSPACE/config/files/system/etc/skel/.local/share/JetBrains/apps/rider/bin"
-          SKEL_SHORTCUTS="$GITHUB_WORKSPACE/config/files/system/etc/skel/.local/share/applications"
+          SKEL_APPS="$GITHUB_WORKSPACE/files/system/etc/skel/.local/share/JetBrains/Toolbox/bin"
+          SKEL_RIDER="$GITHUB_WORKSPACE/files/system/etc/skel/.local/share/JetBrains/apps/rider/bin"
+          SKEL_SHORTCUTS="$GITHUB_WORKSPACE/files/system/etc/skel/.local/share/applications"
           mkdir -p "$SKEL_APPS" "$SKEL_RIDER" "$SKEL_SHORTCUTS"
 
           echo "Downloading JetBrains Toolbox..."
@@ -176,7 +176,7 @@ jobs:
       # Set up Vivalidi custom profile
       - name: Inject Team Vivaldi Configuration Profile
         run: |
-          VIVALDI_SKEL_DIR="config/files/system/etc/skel/.var/app/com.vivaldi.Vivaldi/config/vivaldi/Default"
+          VIVALDI_SKEL_DIR="files/system/etc/skel/.var/app/com.vivaldi.Vivaldi/vivaldi/Default"
           mkdir -p "$VIVALDI_SKEL_DIR"
           
           # 1. Inject the Privacy Preferences file (Enables internal ad/tracker blocker blocks)
