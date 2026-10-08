@@ -31,7 +31,6 @@ modules:
         - gh
         - forgejo-cli
         - dotnet-sdk-10.0
-    cleanup: true
 
   - type: default-flatpaks
     configurations:
