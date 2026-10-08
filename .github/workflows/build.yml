@@ -83,11 +83,12 @@ jobs:
           
           # Prepare the BlueBuild skeleton target directories
           mkdir -p "$GITHUB_WORKSPACE/config/files/system/etc/skel/.local/share"
+          mkdir -p "$GITHUB_WORKSPACE/config/files/system/etc/skel/.local/share/wpilib"
           mkdir -p "$GITHUB_WORKSPACE/config/files/system/etc/skel/.local/share/applications"
           
-          # Move the processed localized assets 
-          if [ -d "$HOME/.local/share/wpilib" ]; then
-            mv "$HOME/.local/share/wpilib/${{ env.WPILIB_YEAR}}" "$GITHUB_WORKSPACE/config/files/system/etc/skel/.local/share/${{ env.WPILIB_YEAR}}"
+          # Move the processed localized assets
+          if [ -d "$HOME/.local/share/wpilib/${{ env.WPILIB_YEAR}}" ]; then
+            mv "$HOME/.local/share/wpilib/${{ env.WPILIB_YEAR}}" "$GITHUB_WORKSPACE/config/files/system/etc/skel/.local/share/wpilib/"
           fi
           
           # Move the dynamically generated shortcuts
