@@ -47,6 +47,7 @@ modules:
       
   - type: script
     scripts:
+      - setup-dotnet-root.sh
       - setup-onshape-and-browser-hardware-accel.sh
 
   - type: signing # this sets up the proper policy & signing files for signed images to work fully
