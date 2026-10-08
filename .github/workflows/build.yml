@@ -83,6 +83,7 @@ jobs:
           
           # Prepare the BlueBuild skeleton target directories
           mkdir -p "$GITHUB_WORKSPACE/config/files/etc/skel/.local/share"
+          mkdir -p "$GITHUB_WORKSPACE/config/files/etc/skel/.local/share/applications"
           
           # Move the processed localized assets 
           if [ -d "$HOME/.local/share/wpilib" ]; then
