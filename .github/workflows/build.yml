@@ -37,7 +37,7 @@ jobs:
         
       - name: Cache OnShape SVG Logo
         id: processed-onshape-cache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             config/files/usr/share/icons/hicolor/scalable/apps/com.onshape.app.svg
@@ -52,7 +52,7 @@ jobs:
       # Look for a cached WPILib installation, if it exists, to speed up builds
       - name: Cache WPILib & VS Code Installation
         id: processed-frc-cache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             config/files/etc/skel/.local/share/wpilib/${{ env.WPILIB_YEAR }}
@@ -124,7 +124,7 @@ jobs:
           
       - name: Cache JetBrains Toolbox and Rider Installation
         id: processed-jetbrains-cache
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: |
             config/files/etc/skel/.local/share/JetBrains/
