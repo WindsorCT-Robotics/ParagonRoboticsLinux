@@ -51,10 +51,9 @@ jobs:
     steps:
       - name: Get latest versions from JetBrains API
         id: jetbrains-versions
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
-            const fetch = require('node-fetch');
             const toolboxResponse = await fetch('https://data.services.jetbrains.com/products/releases?code=TBA&latest=true&type=release');
             const toolboxData = await toolboxResponse.json();
             const riderResponse = await fetch('https://data.services.jetbrains.com/products/releases?code=RD&latest=true&type=release');
