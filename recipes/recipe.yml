@@ -48,5 +48,6 @@ modules:
     scripts:
       - setup-dotnet-root.sh
       - setup-onshape-and-browser-hardware-accel.sh
+      - wpilib-bootstrap.sh
 
   - type: signing # this sets up the proper policy & signing files for signed images to work fully

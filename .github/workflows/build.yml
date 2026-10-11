@@ -58,16 +58,16 @@ jobs:
         uses: actions/cache/restore@v6
         with:
           path: |
-            files/system/etc/skel/.local/share/wpilib/${{ env.WPILIB_YEAR }}
-            files/system/etc/skel/.local/share/applications/AdvantageScope_WPILib_2027_alpha7.desktop
-            files/system/etc/skel/.local/share/applications/DataLogTool_2027_alpha7.desktop
-            files/system/etc/skel/.local/share/applications/Elastic_WPILib_2027_alpha7.desktop
-            files/system/etc/skel/.local/share/applications/Glass_2027_alpha7.desktop
-            files/system/etc/skel/.local/share/applications/OutlineViewer_2027_alpha7.desktop
-            files/system/etc/skel/.local/share/applications/SysId_2027_alpha7.desktop
-            files/system/etc/skel/.local/share/applications/WPIcal_2027_alpha7.desktop
-            files/system/etc/skel/.local/share/applications/WPILib_Documentation_2027_alpha7.desktop
-            files/system/etc/skel/.local/share/applications/WPILib_VS_Code_2027_alpha7.desktop
+            files/system/usr/local/share/wpilib/${{ env.WPILIB_YEAR }}
+            files/system/usr/share/applications/AdvantageScope_WPILib_${{ env.WPILIB_YEAR }}.desktop
+            files/system/usr/share/applications/DataLogTool_${{ env.WPILIB_YEAR }}.desktop
+            files/system/usr/share/applications/Elastic_WPILib_${{ env.WPILIB_YEAR }}.desktop
+            files/system/usr/share/applications/Glass_${{ env.WPILIB_YEAR }}.desktop
+            files/system/usr/share/applications/OutlineViewer_${{ env.WPILIB_YEAR }}.desktop
+            files/system/usr/share/applications/SysId_${{ env.WPILIB_YEAR }}.desktop
+            files/system/usr/share/applications/WPIcal_${{ env.WPILIB_YEAR }}.desktop
+            files/system/usr/share/applications/WPILib_Documentation_${{ env.WPILIB_YEAR }}.desktop
+            files/system/usr/share/applications/WPILib_VS_Code_${{ env.WPILIB_YEAR }}.desktop
           key: processed-wpilib-${{ env.WPILIB_VERSION }}
 
       # On cache miss, download and install WPILib and VS Code
@@ -84,48 +84,53 @@ jobs:
           chmod +x ./WPILibInstaller-CLI
           ./WPILibInstaller-CLI --install-mode all -y
 
-          # Prepare the BlueBuild skeleton target directories
-          mkdir -p "$GITHUB_WORKSPACE/files/system/etc/skel/.local/share"
-          mkdir -p "$GITHUB_WORKSPACE/files/system/etc/skel/.local/share/wpilib"
-          mkdir -p "$GITHUB_WORKSPACE/files/system/etc/skel/.local/share/applications"
+          WPILIB_ROOT="$HOME/.local/share/wpilib/${{ env.WPILIB_YEAR }}"
 
-          # Move the processed localized assets
-          if [ -d "$HOME/.local/share/wpilib/${{ env.WPILIB_YEAR}}" ]; then
-            mv "$HOME/.local/share/wpilib/${{ env.WPILIB_YEAR}}" "$GITHUB_WORKSPACE/files/system/etc/skel/.local/share/wpilib/"
+          # --- Strip installer leftovers (created at install time, never written to) ---
+          echo "Stripping installer leftovers..."
+          if [ -d "$WPILIB_ROOT/data" ]; then
+            rm -rf "$WPILIB_ROOT/data/user-data"
+            rm -rf "$WPILIB_ROOT/data/shared-data"
+            rm -f "$WPILIB_ROOT/data/argv.json"
           fi
 
-          # Move the dynamically generated shortcuts
-          if [ -d "$HOME/.local/share/applications" ]; then
-            mv "$HOME/.local/share/applications/AdvantageScope_WPILib_2027_alpha7.desktop" "$GITHUB_WORKSPACE/files/system/etc/skel/.local/share/applications/"
-            mv "$HOME/.local/share/applications/DataLogTool_2027_alpha7.desktop" "$GITHUB_WORKSPACE/files/system/etc/skel/.local/share/applications/"
-            mv "$HOME/.local/share/applications/Elastic_WPILib_2027_alpha7.desktop" "$GITHUB_WORKSPACE/files/system/etc/skel/.local/share/applications/"
-            mv "$HOME/.local/share/applications/Glass_2027_alpha7.desktop" "$GITHUB_WORKSPACE/files/system/etc/skel/.local/share/applications/"
-            mv "$HOME/.local/share/applications/OutlineViewer_2027_alpha7.desktop" "$GITHUB_WORKSPACE/files/system/etc/skel/.local/share/applications/"
-            mv "$HOME/.local/share/applications/SysId_2027_alpha7.desktop" "$GITHUB_WORKSPACE/files/system/etc/skel/.local/share/applications/"
-            mv "$HOME/.local/share/applications/WPIcal_2027_alpha7.desktop" "$GITHUB_WORKSPACE/files/system/etc/skel/.local/share/applications/"
-            mv "$HOME/.local/share/applications/WPILib_Documentation_2027_alpha7.desktop" "$GITHUB_WORKSPACE/files/system/etc/skel/.local/share/applications/"
-            mv "$HOME/.local/share/applications/WPILib_VS_Code_2027_alpha7.desktop" "$GITHUB_WORKSPACE/files/system/etc/skel/.local/share/applications/"
+          # --- Patch launcher: deterministic VS Code invocations (shared-data + extensions in-tree, code in home) ---
+          echo "Patching launcher..."
+          LAUNCHER="$WPILIB_ROOT/wpilibcode/wpilibcode${{ env.WPILIB_YEAR}}"
+          if [ -f "$LAUNCHER" ]; then
+            sed -i \
+              -e 's|"$CODE_PATH" "$@"|"exec "$CODE_PATH" --user-data-dir "$HOME/.local/state/wpilib/${{ env.WPILIB_YEAR }}/code" --extensions-dir "$SCRIPT_PATH/../vscode/VSCode-linux-x64/data/extensions" "$@"|' \
+              -e 's|"$CODE_PATH" --no-sandbox "$@"|"exec "$CODE_PATH" --user-data-dir "$HOME/.local/state/wpilib/${{ env.WPILIB_YEAR }}/code" --extensions-dir "$SCRIPT_PATH/../vscode/VSCode-linux-x64/data/extensions" --no-sandbox "$@"|' \
+              "$LAUNCHER"
+          fi
+
+          # --- Move tree to ephemeral layer (/usr/local) ---
+          echo "Moving WPILib tree to /usr/local..."
+          mkdir -p "$GITHUB_WORKSPACE/files/system/usr/local/share/wpilib"
+          cp -a "$WPILIB_ROOT" "$GITHUB_WORKSPACE/files/system/usr/local/share/wpilib/${{ env.WPILIB_YEAR }}"
+
+          # --- Move installer-generated .desktop files to /usr/share/applications,
+          # rewriting per-user home paths to the image's /usr/local tree ---
+          echo "Moving WPILib desktop entries..."
+          mkdir -p "$GITHUB_WORKSPACE/files/system/usr/share/applications"
+          for f in "$HOME/.local/share/applications/"*_"${WPILIB_YEAR}".desktop; do
+            [ -e "$f" ] || continue
+            sed "s|/home/[^/]*/\.local/share/wpilib/|/usr/local/share/wpilib/|g" "$f" \
+              > "$GITHUB_WORKSPACE/files/system/usr/share/applications/$(basename "$f")"
+          done
+
+          # --- AppArmor: chrome-sandbox (root:root 4755) + profile + marker ---
+          echo "Setting up AppArmor..."
+          CP="$WPILIB_ROOT/wpilibcode/wpilibcode${{ env.WPILIB_YEAR }}"
+          CPDIR=$(dirname "$CP")
+          if [ -f "$CPDIR/AppArmor/advantagescope" ]; then
+            mkdir -p "$GITHUB_WORKSPACE/files/system/etc/apparmor.d"
+            cp "$CPDIR/AppArmor/advantagescope" "$GITHUB_WORKSPACE/files/system/etc/apparmor.d/wpilib-advantagescope"
+            touch "$GITHUB_WORKSPACE/files/system/etc/apparmor.wpilibcode"
           fi
 
           cd $GITHUB_WORKSPACE
           rm -rf "$TEMP_DIR"
-
-      - name: Save WPILib cache
-        if: always() && steps.processed-frc-cache.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v6
-        with:
-          path: |
-            files/system/etc/skel/.local/share/wpilib/${{ env.WPILIB_YEAR }}
-            files/system/etc/skel/.local/share/applications/AdvantageScope_WPILib_2027_alpha7.desktop
-            files/system/etc/skel/.local/share/applications/DataLogTool_2027_alpha7.desktop
-            files/system/etc/skel/.local/share/applications/Elastic_WPILib_2027_alpha7.desktop
-            files/system/etc/skel/.local/share/applications/Glass_2027_alpha7.desktop
-            files/system/etc/skel/.local/share/applications/OutlineViewer_2027_alpha7.desktop
-            files/system/etc/skel/.local/share/applications/SysId_2027_alpha7.desktop
-            files/system/etc/skel/.local/share/applications/WPIcal_2027_alpha7.desktop
-            files/system/etc/skel/.local/share/applications/WPILib_Documentation_2027_alpha7.desktop
-            files/system/etc/skel/.local/share/applications/WPILib_VS_Code_2027_alpha7.desktop
-          key: processed-wpilib-${{ env.WPILIB_VERSION }}
 
       # Cache and install latest JetBrains Toolbox and Rider apps
       - name: Get latest JetBrains Toolbox and Rider versions
@@ -148,47 +153,49 @@ jobs:
         uses: actions/cache/restore@v6
         with:
           path: |
-            files/system/etc/skel/.local/share/JetBrains/
-            files/system/etc/skel/.local/share/applications/jetbrains-*.desktop
+            files/system/usr/local/share/JetBrains/
+            files/system/usr/share/applications/jetbrains-*.desktop
           key: jetbrains-cache-${{ steps.jetbrains-versions.outputs.toolbox_version }}-${{ steps.jetbrains-versions.outputs.rider_version }}
 
       - name: Download and Install JetBrains Toolbox and Rider on Cache Miss
         if: steps.processed-jetbrains-cache.outputs.cache-hit != 'true'
         run: |
-          SKEL_APPS="$GITHUB_WORKSPACE/files/system/etc/skel/.local/share/JetBrains/Toolbox/bin"
-          SKEL_RIDER="$GITHUB_WORKSPACE/files/system/etc/skel/.local/share/JetBrains/apps/rider/bin"
-          SKEL_SHORTCUTS="$GITHUB_WORKSPACE/files/system/etc/skel/.local/share/applications"
-          mkdir -p "$SKEL_APPS" "$SKEL_RIDER" "$SKEL_SHORTCUTS"
+          LOCAL_APPS="$GITHUB_WORKSPACE/files/system/usr/local/share/JetBrains"
+          mkdir -p "$LOCAL_APPS"
 
           echo "Downloading JetBrains Toolbox..."
           TBX_URL=$(curl -s 'https://data.services.jetbrains.com/products/releases?code=TBA&latest=true&type=release' | jq -r '.TBA[0].downloads.linux.link')
-          curl -L "$TBX_URL" | tar -xz -C "$SKEL_APPS" --strip-components=2
+          curl -L "$TBX_URL" | tar -xz -C "$LOCAL_APPS/Toolbox/bin" --strip-components=2
 
           echo "Downloading JetBrains Rider Engine..."
           RIDER_URL=$(curl -s 'https://data.services.jetbrains.com/products/releases?code=RD&latest=true&type=release' | jq -r '.RD[0].downloads.linux.link')
-          curl -L "$RIDER_URL" | tar -xz -C "$SKEL_RIDER" --strip-components=1
+          curl -L "$RIDER_URL" | tar -xz -C "$LOCAL_APPS/apps/rider/bin" --strip-components=1
 
-          cat << 'EOF' > "$SKEL_SHORTCUTS/jetbrains-rider.desktop"
+          # Seed Toolbox state with auto-update disabled (rebase is the only update path)
+          bash "$GITHUB_WORKSPACE/files/scripts/setup-jetbrains-settings.sh" "$GITHUB_WORKSPACE/files/system/etc/skel/.local/share/JetBrains/Toolbox"
+
+          # --- System .desktop files under /usr/share/applications ---
+          cat << 'EOF' > "$GITHUB_WORKSPACE/files/system/usr/share/applications/jetbrains-rider.desktop"
           [Desktop Entry]
           Version=1.0
           Type=Application
           Name=JetBrains Rider
           Comment=Cross-Platform .NET IDE
-          Exec=/home/%u/.local/share/JetBrains/apps/rider/bin/rider.sh
-          Icon=/home/%u/.local/share/JetBrains/apps/rider/bin/rider.svg
+          Exec=/usr/local/share/JetBrains/apps/rider/bin/rider
+          Icon=/usr/local/share/JetBrains/apps/rider/bin/rider.svg
           Terminal=false
           Categories=Development;IDE;
           StartupNotify=true
           EOF
 
-          cat << 'EOF' > "$SKEL_SHORTCUTS/jetbrains-toolbox.desktop"
+          cat << 'EOF' > "$GITHUB_WORKSPACE/files/system/usr/share/applications/jetbrains-toolbox.desktop"
           [Desktop Entry]
           Version=1.0
           Type=Application
           Name=JetBrains Toolbox
           Comment=Manage JetBrains IDEs
-          Exec=/home/%u/.local/share/JetBrains/Toolbox/bin/jetbrains-toolbox
-          Icon=/home/%u/.local/share/JetBrains/Toolbox/bin/toolbox.svg
+          Exec=/usr/local/share/JetBrains/Toolbox/bin/jetbrains-toolbox
+          Icon=/usr/local/share/JetBrains/Toolbox/bin/toolbox.svg
           Terminal=false
           Categories=Development;IDE;
           StartupNotify=true
@@ -199,8 +206,8 @@ jobs:
         uses: actions/cache/save@v6
         with:
           path: |
-            files/system/etc/skel/.local/share/JetBrains/
-            files/system/etc/skel/.local/share/applications/jetbrains-*.desktop
+            files/system/usr/local/share/JetBrains/
+            files/system/usr/share/applications/jetbrains-*.desktop
           key: jetbrains-cache-${{ steps.jetbrains-versions.outputs.toolbox_version }}-${{ steps.jetbrains-versions.outputs.rider_version }}
 
   bluebuild:
@@ -232,24 +239,24 @@ jobs:
         uses: actions/cache/restore@v6
         with:
           path: |
-            files/system/etc/skel/.local/share/wpilib/${{ env.WPILIB_YEAR }}
-            files/system/etc/skel/.local/share/applications/AdvantageScope_WPILib_2027_alpha7.desktop
-            files/system/etc/skel/.local/share/applications/DataLogTool_2027_alpha7.desktop
-            files/system/etc/skel/.local/share/applications/Elastic_WPILib_2027_alpha7.desktop
-            files/system/etc/skel/.local/share/applications/Glass_2027_alpha7.desktop
-            files/system/etc/skel/.local/share/applications/OutlineViewer_2027_alpha7.desktop
-            files/system/etc/skel/.local/share/applications/SysId_2027_alpha7.desktop
-            files/system/etc/skel/.local/share/applications/WPIcal_2027_alpha7.desktop
-            files/system/etc/skel/.local/share/applications/WPILib_Documentation_2027_alpha7.desktop
-            files/system/etc/skel/.local/share/applications/WPILib_VS_Code_2027_alpha7.desktop
+            files/system/usr/local/share/wpilib/${{ env.WPILIB_YEAR }}
+            files/system/usr/share/applications/AdvantageScope_WPILib_2027_alpha7.desktop
+            files/system/usr/share/applications/DataLogTool_2027_alpha7.desktop
+            files/system/usr/share/applications/Elastic_WPILib_2027_alpha7.desktop
+            files/system/usr/share/applications/Glass_2027_alpha7.desktop
+            files/system/usr/share/applications/OutlineViewer_2027_alpha7.desktop
+            files/system/usr/share/applications/SysId_2027_alpha7.desktop
+            files/system/usr/share/applications/WPIcal_2027_alpha7.desktop
+            files/system/usr/share/applications/WPILib_Documentation_2027_alpha7.desktop
+            files/system/usr/share/applications/WPILib_VS_Code_${{ env.WPILIB_YEAR }}.desktop
           key: processed-wpilib-${{ env.WPILIB_VERSION }}
 
       - name: Restore JetBrains cache
         uses: actions/cache/restore@v6
         with:
           path: |
-            files/system/etc/skel/.local/share/JetBrains/
-            files/system/etc/skel/.local/share/applications/jetbrains-*.desktop
+            files/system/usr/local/share/JetBrains/
+            files/system/usr/share/applications/jetbrains-*.desktop
           key: jetbrains-cache-${{ steps.jetbrains-versions.outputs.toolbox_version }}-${{ steps.jetbrains-versions.outputs.rider_version }}
 
       # Set up Vivaldi custom profile

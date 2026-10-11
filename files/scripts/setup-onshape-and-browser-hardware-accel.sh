@@ -20,5 +20,5 @@ Exec=flatpak run com.vivaldi.Vivaldi --app=https://onshape.com
 Icon=com.onshape.app
 Terminal=false
 Type=Application
-Categories=Network;WebBrowser;Development;
+Categories=Network;WebBrowser;Development;CAD;Robotics;
 EOF
