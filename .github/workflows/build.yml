@@ -97,6 +97,7 @@ jobs:
       - name: Generate WPILib & VS Code Installation on Cache Miss
         if: steps.processed-frc-cache.outputs.cache-hit != 'true'
         run: |
+          echo "Cache miss for WPILib & VS Code version ${{ needs.wpilib-config.outputs.wpilib_version }} year ${{ needs.wpilib-config.outputs.wpilib_year }}, downloading and installing..."
           TEMP_DIR=$(mktemp -d)
           cd "$TEMP_DIR"
 
@@ -213,7 +214,7 @@ jobs:
           curl -L "$RIDER_URL" | tar -xz -C "$LOCAL_APPS/apps/rider/bin" --strip-components=1
 
           # Seed Toolbox state with auto-update disabled (rebase is the only update path)
-          bash "$GITHUB_WORKSPACE/files/scripts/setup-jetbrains-settings.sh" "$GITHUB_WORKSPACE/files/system/etc/skel/.local/share/JetBrains/Toolbox"
+          bash "$GITHUB_WORKSPACE/files/scripts/setup-jetbrains-settings.sh" "$LOCAL_APPS/Toolbox"
 
           # --- System .desktop files under /usr/share/applications ---
           cat << 'EOF' > "$GITHUB_WORKSPACE/files/system/usr/share/applications/jetbrains-rider.desktop"
@@ -290,6 +291,7 @@ jobs:
             files/system/usr/share/applications/WPIcal_${{ needs.wpilib-config.outputs.wpilib_year }}.desktop
             files/system/usr/share/applications/WPILib_Documentation_${{ needs.wpilib-config.outputs.wpilib_year }}.desktop
             files/system/usr/share/applications/WPILib_VS_Code_${{ needs.wpilib-config.outputs.wpilib_year }}.desktop
+            files/system/etc/apparmor.d/wpilib-advantagescope
           key: processed-wpilib-${{ needs.wpilib-config.outputs.wpilib_version }}
 
       - name: Restore JetBrains cache
