@@ -2,16 +2,14 @@
 # Post-build script: create home symlinks for the WPILib version tree in /usr/local.
 # Runs after the 'files' module copies files/system/* into the image root.
 # The WPILib tree must already exist at /usr/local/share/wpilib/<WPILIB_YEAR>/;
-# this script discovers the year by globbing the version directory and creates
-# a real directory under /etc/skel with subtree symlinks so
+# this script creates a real directory under /etc/skel with subtree symlinks so
 # per-student home copies map correctly onto the read-only /usr/local tree.
 set -euo pipefail
 
-# Discover WPILIB_YEAR by globbing the version directory in /usr/local.
-# Exactly one version directory is guaranteed in the image.
-mapfile -t VERSION_DIRS < <(find /usr/local/share/wpilib -mindepth 1 -maxdepth 1 -type d)
-[ "${#VERSION_DIRS[@]}" -eq 1 ] || { echo "wpilib-bootstrap: ERROR — expected exactly one version dir, found ${#VERSION_DIRS[@]}"; exit 1; }
-WPILIB_YEAR="$(basename "${VERSION_DIRS[0]}")"
+# Accept WPILIB_VERSION and WPILIB_YEAR as arguments (passed from recipe module).
+# Fallback to env vars if not provided (for local testing).
+WPILIB_VERSION="${1:-$WPILIB_VERSION}"
+WPILIB_YEAR="${2:-$WPILIB_YEAR}"
 
 WPILIB_ROOT="/usr/local/share/wpilib/${WPILIB_YEAR}"
 SKEL_WPILIB="/etc/skel/.local/share/wpilib/${WPILIB_YEAR}"
