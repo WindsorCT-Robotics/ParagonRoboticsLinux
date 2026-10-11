@@ -81,7 +81,6 @@ jobs:
         id: processed-onshape-cache
         uses: actions/cache/restore@v6
         with:
-          fail-on-cache-miss: true
           path: |
             files/system/usr/share/icons/hicolor/scalable/apps/com.onshape.app.svg
           key: ${{ runner.os }}-onshape-logo-cache-v1
@@ -105,7 +104,6 @@ jobs:
         id: processed-frc-cache
         uses: actions/cache/restore@v6
         with:
-          fail-on-cache-miss: true
           path: |
             files/system/usr/share/wpilib/${{ needs.wpilib-config.outputs.wpilib_year }}
             files/system/usr/share/applications/AdvantageScope_WPILib_${{ needs.wpilib-config.outputs.wpilib_year }}.desktop
@@ -206,7 +204,6 @@ jobs:
         id: processed-jetbrains-cache
         uses: actions/cache/restore@v6
         with:
-          fail-on-cache-miss: true
           path: |
             files/system/usr/share/JetBrains/
             files/system/usr/share/applications/jetbrains-*.desktop
@@ -289,6 +286,7 @@ jobs:
       - name: Restore OnShape SVG Logo cache
         uses: actions/cache/restore@v6
         with:
+          fail-on-cache-miss: true
           path: |
             files/system/usr/share/icons/hicolor/scalable/apps/com.onshape.app.svg
           key: ${{ runner.os }}-onshape-logo-cache-v1
@@ -296,6 +294,7 @@ jobs:
       - name: Restore WPILib & VS Code cache
         uses: actions/cache/restore@v6
         with:
+          fail-on-cache-miss: true
           path: |
             files/system/usr/share/wpilib/${{ needs.wpilib-config.outputs.wpilib_year }}
             files/system/usr/share/applications/AdvantageScope_WPILib_${{ needs.wpilib-config.outputs.wpilib_year }}.desktop
@@ -313,6 +312,7 @@ jobs:
       - name: Restore JetBrains cache
         uses: actions/cache/restore@v6
         with:
+          fail-on-cache-miss: true
           path: |
             files/system/usr/share/JetBrains/
             files/system/usr/share/applications/jetbrains-*.desktop
@@ -371,7 +371,17 @@ jobs:
              "version": 1
           }
           EOF
-
+          
+      - name: Verify WPILib files exist
+        run: |
+          if [ -d "files/system/usr/share/wpilib/2027_alpha7" ]; then
+            echo "✓ WPILib directory found"
+            ls -la files/system/usr/share/wpilib/2027_alpha7/ | head -20
+          else
+            echo "✗ WPILib directory NOT found"
+            ls -la files/system/usr/share/ || echo "files/system/usr/share does not exist"
+          fi
+          
       # the build is fully handled by the reusable github action
       - name: Build Paragon Robotics Linux
         uses: blue-build/github-action@v1.13
