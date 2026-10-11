@@ -62,8 +62,8 @@ jobs:
             const toolboxVersion = toolboxData.TBA[0].version;
             const riderVersion = riderData.RD[0].version;
 
-            return { toolbox_version: toolboxVersion, rider_version: riderVersion };
-          result-encoding: json
+            core.setOutput('toolbox_version', toolboxVersion);
+            core.setOutput('rider_version', riderVersion);
 
   prepare-cache:
     name: Prepare shared build caches
