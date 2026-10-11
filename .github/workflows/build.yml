@@ -16,13 +16,35 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref || github.run_id }}
   cancel-in-progress: true
 
-env:
-  WPILIB_VERSION: 2027.0.0-alpha-7
-  WPILIB_YEAR: 2027_alpha7
-
 jobs:
+  wpilib-config:
+    name: Read WPILib configuration
+    runs-on: ubuntu-latest
+    outputs:
+      wpilib_version: ${{ steps.wpilib-config.outputs.wpilib_version }}
+      wpilib_year: ${{ steps.wpilib-config.outputs.wpilib_year }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
+      - name: Read WPILib configuration
+        id: wpilib-config
+        run: |
+          CONFIG_FILE="files/build-configuration.json"
+          if [ ! -f "$CONFIG_FILE" ]; then
+            echo "ERROR: build-configuration.json not found"
+            exit 1
+          fi
+          WPILIB_VERSION=$(jq -r '.wpilib.version' "$CONFIG_FILE")
+          WPILIB_YEAR=$(jq -r '.wpilib.year' "$CONFIG_FILE")
+          echo "wpilib_version=$WPILIB_VERSION" >> "$GITHUB_OUTPUT"
+          echo "wpilib_year=$WPILIB_YEAR" >> "$GITHUB_OUTPUT"
+          echo "WPILIB_VERSION=$WPILIB_VERSION"
+          echo "WPILIB_YEAR=$WPILIB_YEAR"
+
   prepare-cache:
     name: Prepare shared build caches
+    needs: wpilib-config
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -58,17 +80,17 @@ jobs:
         uses: actions/cache/restore@v6
         with:
           path: |
-            files/system/usr/local/share/wpilib/${{ env.WPILIB_YEAR }}
-            files/system/usr/share/applications/AdvantageScope_WPILib_${{ env.WPILIB_YEAR }}.desktop
-            files/system/usr/share/applications/DataLogTool_${{ env.WPILIB_YEAR }}.desktop
-            files/system/usr/share/applications/Elastic_WPILib_${{ env.WPILIB_YEAR }}.desktop
-            files/system/usr/share/applications/Glass_${{ env.WPILIB_YEAR }}.desktop
-            files/system/usr/share/applications/OutlineViewer_${{ env.WPILIB_YEAR }}.desktop
-            files/system/usr/share/applications/SysId_${{ env.WPILIB_YEAR }}.desktop
-            files/system/usr/share/applications/WPIcal_${{ env.WPILIB_YEAR }}.desktop
-            files/system/usr/share/applications/WPILib_Documentation_${{ env.WPILIB_YEAR }}.desktop
-            files/system/usr/share/applications/WPILib_VS_Code_${{ env.WPILIB_YEAR }}.desktop
-          key: processed-wpilib-${{ env.WPILIB_VERSION }}
+            files/system/usr/local/share/wpilib/${{ needs.wpilib-config.outputs.wpilib_year }}
+            files/system/usr/share/applications/AdvantageScope_WPILib_${{ needs.wpilib-config.outputs.wpilib_year }}.desktop
+            files/system/usr/share/applications/DataLogTool_${{ needs.wpilib-config.outputs.wpilib_year }}.desktop
+            files/system/usr/share/applications/Elastic_WPILib_${{ needs.wpilib-config.outputs.wpilib_year }}.desktop
+            files/system/usr/share/applications/Glass_${{ needs.wpilib-config.outputs.wpilib_year }}.desktop
+            files/system/usr/share/applications/OutlineViewer_${{ needs.wpilib-config.outputs.wpilib_year }}.desktop
+            files/system/usr/share/applications/SysId_${{ needs.wpilib-config.outputs.wpilib_year }}.desktop
+            files/system/usr/share/applications/WPIcal_${{ needs.wpilib-config.outputs.wpilib_year }}.desktop
+            files/system/usr/share/applications/WPILib_Documentation_${{ needs.wpilib-config.outputs.wpilib_year }}.desktop
+            files/system/usr/share/applications/WPILib_VS_Code_${{ needs.wpilib-config.outputs.wpilib_year }}.desktop
+          key: processed-wpilib-${{ needs.wpilib-config.outputs.wpilib_version }}
 
       # On cache miss, download and install WPILib and VS Code
       - name: Generate WPILib & VS Code Installation on Cache Miss
@@ -78,13 +100,13 @@ jobs:
           cd "$TEMP_DIR"
 
           echo "Downloading combined installer package..."
-          curl -L "https://packages.wpilib.workers.dev/installer/v${{ env.WPILIB_VERSION }}/WPILib_Linux-x64-${{ env.WPILIB_VERSION }}.tar.gz" | tar -xz --strip-components=1
+          curl -L "https://packages.wpilib.workers.dev/installer/v${{ needs.wpilib-config.outputs.wpilib_version }}/WPILib_Linux-x64-${{ needs.wpilib-config.outputs.wpilib_version }}.tar.gz" | tar -xz --strip-components=1
 
           echo "Installing WPILib and VS Code..."
           chmod +x ./WPILibInstaller-CLI
           ./WPILibInstaller-CLI --install-mode all -y
 
-          WPILIB_ROOT="$HOME/.local/share/wpilib/${{ env.WPILIB_YEAR }}"
+          WPILIB_ROOT="$HOME/.local/share/wpilib/${{ needs.wpilib-config.outputs.wpilib_year }}"
 
           # --- Strip installer leftovers (created at install time, never written to) ---
           echo "Stripping installer leftovers..."
@@ -96,18 +118,18 @@ jobs:
 
           # --- Patch launcher: deterministic VS Code invocations (shared-data + extensions in-tree, code in home) ---
           echo "Patching launcher..."
-          LAUNCHER="$WPILIB_ROOT/wpilibcode/wpilibcode${{ env.WPILIB_YEAR}}"
+          LAUNCHER="$WPILIB_ROOT/wpilibcode/wpilibcode${{ needs.wpilib-config.outputs.wpilib_year}}"
           if [ -f "$LAUNCHER" ]; then
             sed -i \
-              -e 's|"$CODE_PATH" "$@"|"exec "$CODE_PATH" --user-data-dir "$HOME/.local/state/wpilib/${{ env.WPILIB_YEAR }}/code" --extensions-dir "$SCRIPT_PATH/../vscode/VSCode-linux-x64/data/extensions" "$@"|' \
-              -e 's|"$CODE_PATH" --no-sandbox "$@"|"exec "$CODE_PATH" --user-data-dir "$HOME/.local/state/wpilib/${{ env.WPILIB_YEAR }}/code" --extensions-dir "$SCRIPT_PATH/../vscode/VSCode-linux-x64/data/extensions" --no-sandbox "$@"|' \
+              -e 's|"$CODE_PATH" "$@"|"exec "$CODE_PATH" --user-data-dir "$HOME/.local/wpilib/${{ needs.wpilib-config.outputs.wpilib_year }}/code" --extensions-dir "$HOME/.local/state/wpilib/${{ needs.wpilib-config.outputs.wpilib_year }}/code/extensions" "$@"|' \
+              -e 's|"$CODE_PATH" --no-sandbox "$@"|"exec "$CODE_PATH" --user-data-dir "$HOME/.local/wpilib/${{ needs.wpilib-config.outputs.wpilib_year }}/code" --extensions-dir "$HOME/.local/state/wpilib/${{ needs.wpilib-config.outputs.wpilib_year }}/code/extensions" --no-sandbox "$@"|' \
               "$LAUNCHER"
           fi
 
           # --- Move tree to ephemeral layer (/usr/local) ---
           echo "Moving WPILib tree to /usr/local..."
           mkdir -p "$GITHUB_WORKSPACE/files/system/usr/local/share/wpilib"
-          cp -a "$WPILIB_ROOT" "$GITHUB_WORKSPACE/files/system/usr/local/share/wpilib/${{ env.WPILIB_YEAR }}"
+          cp -a "$WPILIB_ROOT" "$GITHUB_WORKSPACE/files/system/usr/local/share/wpilib/${{ needs.wpilib-config.outputs.wpilib_year }}"
 
           # --- Move installer-generated .desktop files to /usr/share/applications,
           # rewriting per-user home paths to the image's /usr/local tree ---
@@ -121,7 +143,7 @@ jobs:
 
           # --- AppArmor: chrome-sandbox (root:root 4755) + profile + marker ---
           echo "Setting up AppArmor..."
-          CP="$WPILIB_ROOT/wpilibcode/wpilibcode${{ env.WPILIB_YEAR }}"
+          CP="$WPILIB_ROOT/wpilibcode/wpilibcode${{ needs.wpilib-config.outputs.wpilib_year }}"
           CPDIR=$(dirname "$CP")
           if [ -f "$CPDIR/AppArmor/advantagescope" ]; then
             mkdir -p "$GITHUB_WORKSPACE/files/system/etc/apparmor.d"
@@ -239,7 +261,7 @@ jobs:
         uses: actions/cache/restore@v6
         with:
           path: |
-            files/system/usr/local/share/wpilib/${{ env.WPILIB_YEAR }}
+            files/system/usr/local/share/wpilib/${{ needs.wpilib-config.outputs.wpilib_year }}
             files/system/usr/share/applications/AdvantageScope_WPILib_2027_alpha7.desktop
             files/system/usr/share/applications/DataLogTool_2027_alpha7.desktop
             files/system/usr/share/applications/Elastic_WPILib_2027_alpha7.desktop
@@ -248,8 +270,8 @@ jobs:
             files/system/usr/share/applications/SysId_2027_alpha7.desktop
             files/system/usr/share/applications/WPIcal_2027_alpha7.desktop
             files/system/usr/share/applications/WPILib_Documentation_2027_alpha7.desktop
-            files/system/usr/share/applications/WPILib_VS_Code_${{ env.WPILIB_YEAR }}.desktop
-          key: processed-wpilib-${{ env.WPILIB_VERSION }}
+            files/system/usr/share/applications/WPILib_VS_Code_${{ needs.wpilib-config.outputs.wpilib_year }}.desktop
+          key: processed-wpilib-${{ needs.wpilib-config.outputs.wpilib_version }}
 
       - name: Restore JetBrains cache
         uses: actions/cache/restore@v6

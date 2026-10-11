@@ -6,10 +6,14 @@
 # per-student home copies map correctly onto the read-only /usr/local tree.
 set -euo pipefail
 
-# Accept WPILIB_VERSION and WPILIB_YEAR as arguments (passed from recipe module).
-# Fallback to env vars if not provided (for local testing).
-WPILIB_VERSION="${1:-$WPILIB_VERSION}"
-WPILIB_YEAR="${2:-$WPILIB_YEAR}"
+# Read WPILib configuration from build-configuration.json
+CONFIG_FILE="$(dirname "$0")/../build-configuration.json"
+if [ ! -f "$CONFIG_FILE" ]; then
+  echo "wpilib-bootstrap: ERROR — build-configuration.json not found at ${CONFIG_FILE}"; exit 1
+fi
+
+WPILIB_VERSION=$(jq -r '.wpilib.version' "$CONFIG_FILE")
+WPILIB_YEAR=$(jq -r '.wpilib.year' "$CONFIG_FILE")
 
 WPILIB_ROOT="/usr/local/share/wpilib/${WPILIB_YEAR}"
 SKEL_WPILIB="/etc/skel/.local/share/wpilib/${WPILIB_YEAR}"
@@ -38,6 +42,14 @@ done
 # Set chrome-sandbox to 4755 (setuid) so Chromium's SUID sandbox works
 # when unprivileged user namespaces are restricted (Aurora DX default).
 chmod 4755 "${WPILIB_ROOT}/vscode/VSCode-linux-x64/chrome-sandbox"
+
+# Create a symlink in /etc/skel so students can install extensions to their
+# year-gated home directory while still having access to pre-installed extensions.
+# VS Code uses --extensions-dir to point to ~/.../code/extensions, so this
+# symlink makes the pre-installed extensions accessible without write access
+# to /usr/local.
+mkdir -p "$SKEL_CODE"
+ln -sfn "${WPILIB_ROOT}/vscode/VSCode-linux-x64/data/extensions/*" "${SKEL_CODE}/extensions"
 
 # --- Seed Gradle dist zip (real file, not symlink — wrapper extracts into home) ---
 # Find the gradle zip in installUtils and derive the dist dir name from it.
