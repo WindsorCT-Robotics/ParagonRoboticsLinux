@@ -9,9 +9,9 @@ cat > "${TOOLBOX_DIR}/.settings.json" << 'SETTINGS'
     "advanced": {
         "build_for_installed": true
     },
-    "install_location": "/opt/JetBrains/apps",
+    "install_location": "/usr/share/JetBrains/apps",
     "shell_scripts": {
-        "location": "/opt/JetBrains/Toolbox/scripts"
+        "location": "/usr/share/JetBrains/Toolbox/scripts"
     },
     "statistics": {
         "allow": true

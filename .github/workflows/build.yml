@@ -80,7 +80,7 @@ jobs:
         uses: actions/cache/restore@v6
         with:
           path: |
-            files/system/opt/wpilib/${{ needs.wpilib-config.outputs.wpilib_year }}
+            files/system/usr/share/wpilib/${{ needs.wpilib-config.outputs.wpilib_year }}
             files/system/usr/share/applications/AdvantageScope_WPILib_${{ needs.wpilib-config.outputs.wpilib_year }}.desktop
             files/system/usr/share/applications/DataLogTool_${{ needs.wpilib-config.outputs.wpilib_year }}.desktop
             files/system/usr/share/applications/Elastic_WPILib_${{ needs.wpilib-config.outputs.wpilib_year }}.desktop
@@ -90,6 +90,7 @@ jobs:
             files/system/usr/share/applications/WPIcal_${{ needs.wpilib-config.outputs.wpilib_year }}.desktop
             files/system/usr/share/applications/WPILib_Documentation_${{ needs.wpilib-config.outputs.wpilib_year }}.desktop
             files/system/usr/share/applications/WPILib_VS_Code_${{ needs.wpilib-config.outputs.wpilib_year }}.desktop
+            files/system/etc/apparmor.d/wpilib-advantagescope
           key: processed-wpilib-${{ needs.wpilib-config.outputs.wpilib_version }}
 
       # On cache miss, download and install WPILib and VS Code
@@ -126,18 +127,18 @@ jobs:
               "$LAUNCHER"
           fi
 
-          # --- Move tree to ephemeral layer (/opt) ---
-          echo "Moving WPILib tree to /opt..."
-          mkdir -p "$GITHUB_WORKSPACE/files/system/opt/wpilib"
-          cp -a "$WPILIB_ROOT" "$GITHUB_WORKSPACE/files/system/opt/wpilib/${{ needs.wpilib-config.outputs.wpilib_year }}"
+          # --- Move tree to ephemeral layer (/usr/share) ---
+          echo "Moving WPILib tree to /usr/share..."
+          mkdir -p "$GITHUB_WORKSPACE/files/system/usr/share/wpilib"
+          cp -a "$WPILIB_ROOT" "$GITHUB_WORKSPACE/files/system/usr/share/wpilib/${{ needs.wpilib-config.outputs.wpilib_year }}"
 
           # --- Move installer-generated .desktop files to /usr/share/applications,
-          # rewriting per-user home paths to the image's /opt tree ---
+          # rewriting per-user home paths to the image's /usr/share tree ---
           echo "Moving WPILib desktop entries..."
           mkdir -p "$GITHUB_WORKSPACE/files/system/usr/share/applications"
           for f in "$HOME/.local/share/applications/"*_"${WPILIB_YEAR}".desktop; do
             [ -e "$f" ] || continue
-            sed "s|/home/[^/]*/\.local/share/wpilib/|/opt/wpilib/|g" "$f" \
+            sed "s|/home/[^/]*/\.local/share/wpilib/|/usr/share/wpilib/|g" "$f" \
               > "$GITHUB_WORKSPACE/files/system/usr/share/applications/$(basename "$f")"
           done
 
@@ -153,6 +154,24 @@ jobs:
 
           cd $GITHUB_WORKSPACE
           rm -rf "$TEMP_DIR"
+          
+      - name: Save WPILib & VS Code cache
+        if: always() && steps.processed-frc-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v6
+        with:
+          path: |
+            files/system/usr/share/wpilib/${{ needs.wpilib-config.outputs.wpilib_year }}
+            files/system/usr/share/applications/AdvantageScope_WPILib_${{ needs.wpilib-config.outputs.wpilib_year }}.desktop
+            files/system/usr/share/applications/DataLogTool_${{ needs.wpilib-config.outputs.wpilib_year }}.desktop
+            files/system/usr/share/applications/Elastic_WPILib_${{ needs.wpilib-config.outputs.wpilib_year }}.desktop
+            files/system/usr/share/applications/Glass_${{ needs.wpilib-config.outputs.wpilib_year }}.desktop
+            files/system/usr/share/applications/OutlineViewer_${{ needs.wpilib-config.outputs.wpilib_year }}.desktop
+            files/system/usr/share/applications/SysId_${{ needs.wpilib-config.outputs.wpilib_year }}.desktop
+            files/system/usr/share/applications/WPIcal_${{ needs.wpilib-config.outputs.wpilib_year }}.desktop
+            files/system/usr/share/applications/WPILib_Documentation_${{ needs.wpilib-config.outputs.wpilib_year }}.desktop
+            files/system/usr/share/applications/WPILib_VS_Code_${{ needs.wpilib-config.outputs.wpilib_year }}.desktop
+            files/system/etc/apparmor.d/wpilib-advantagescope
+          key: processed-wpilib-${{ needs.wpilib-config.outputs.wpilib_version }}
 
       # Cache and install latest JetBrains Toolbox and Rider apps
       - name: Get latest JetBrains Toolbox and Rider versions
@@ -175,14 +194,14 @@ jobs:
         uses: actions/cache/restore@v6
         with:
           path: |
-            files/system/opt/JetBrains/
+            files/system/usr/share/JetBrains/
             files/system/usr/share/applications/jetbrains-*.desktop
           key: jetbrains-cache-${{ steps.jetbrains-versions.outputs.toolbox_version }}-${{ steps.jetbrains-versions.outputs.rider_version }}
 
       - name: Download and Install JetBrains Toolbox and Rider on Cache Miss
         if: steps.processed-jetbrains-cache.outputs.cache-hit != 'true'
         run: |
-          LOCAL_APPS="$GITHUB_WORKSPACE/files/system/opt/JetBrains"
+          LOCAL_APPS="$GITHUB_WORKSPACE/files/system/usr/share/JetBrains"
           mkdir -p "$LOCAL_APPS"
 
           echo "Downloading JetBrains Toolbox..."
@@ -203,8 +222,8 @@ jobs:
           Type=Application
           Name=JetBrains Rider
           Comment=Cross-Platform .NET IDE
-          Exec=/opt/JetBrains/apps/rider/bin/rider
-          Icon=/opt/JetBrains/apps/rider/bin/rider.svg
+          Exec=/usr/share/JetBrains/apps/rider/bin/rider
+          Icon=/usr/share/JetBrains/apps/rider/bin/rider.svg
           Terminal=false
           Categories=Development;IDE;
           StartupNotify=true
@@ -216,8 +235,8 @@ jobs:
           Type=Application
           Name=JetBrains Toolbox
           Comment=Manage JetBrains IDEs
-          Exec=/opt/JetBrains/Toolbox/bin/jetbrains-toolbox
-          Icon=/opt/JetBrains/Toolbox/bin/toolbox.svg
+          Exec=/usr/share/JetBrains/Toolbox/bin/jetbrains-toolbox
+          Icon=/usr/share/JetBrains/Toolbox/bin/toolbox.svg
           Terminal=false
           Categories=Development;IDE;
           StartupNotify=true
@@ -228,7 +247,7 @@ jobs:
         uses: actions/cache/save@v6
         with:
           path: |
-            files/system/opt/JetBrains/
+            files/system/usr/share/JetBrains/
             files/system/usr/share/applications/jetbrains-*.desktop
           key: jetbrains-cache-${{ steps.jetbrains-versions.outputs.toolbox_version }}-${{ steps.jetbrains-versions.outputs.rider_version }}
 
@@ -261,15 +280,15 @@ jobs:
         uses: actions/cache/restore@v6
         with:
           path: |
-            files/system/opt/wpilib/${{ needs.wpilib-config.outputs.wpilib_year }}
-            files/system/usr/share/applications/AdvantageScope_WPILib_2027_alpha7.desktop
-            files/system/usr/share/applications/DataLogTool_2027_alpha7.desktop
-            files/system/usr/share/applications/Elastic_WPILib_2027_alpha7.desktop
-            files/system/usr/share/applications/Glass_2027_alpha7.desktop
-            files/system/usr/share/applications/OutlineViewer_2027_alpha7.desktop
-            files/system/usr/share/applications/SysId_2027_alpha7.desktop
-            files/system/usr/share/applications/WPIcal_2027_alpha7.desktop
-            files/system/usr/share/applications/WPILib_Documentation_2027_alpha7.desktop
+            files/system/usr/share/wpilib/${{ needs.wpilib-config.outputs.wpilib_year }}
+            files/system/usr/share/applications/AdvantageScope_WPILib_${{ needs.wpilib-config.outputs.wpilib_year }}.desktop
+            files/system/usr/share/applications/DataLogTool_${{ needs.wpilib-config.outputs.wpilib_year }}.desktop
+            files/system/usr/share/applications/Elastic_WPILib_${{ needs.wpilib-config.outputs.wpilib_year }}.desktop
+            files/system/usr/share/applications/Glass_${{ needs.wpilib-config.outputs.wpilib_year }}.desktop
+            files/system/usr/share/applications/OutlineViewer_${{ needs.wpilib-config.outputs.wpilib_year }}.desktop
+            files/system/usr/share/applications/SysId_${{ needs.wpilib-config.outputs.wpilib_year }}.desktop
+            files/system/usr/share/applications/WPIcal_${{ needs.wpilib-config.outputs.wpilib_year }}.desktop
+            files/system/usr/share/applications/WPILib_Documentation_${{ needs.wpilib-config.outputs.wpilib_year }}.desktop
             files/system/usr/share/applications/WPILib_VS_Code_${{ needs.wpilib-config.outputs.wpilib_year }}.desktop
           key: processed-wpilib-${{ needs.wpilib-config.outputs.wpilib_version }}
 
@@ -277,7 +296,7 @@ jobs:
         uses: actions/cache/restore@v6
         with:
           path: |
-            files/system/opt/JetBrains/
+            files/system/usr/share/JetBrains/
             files/system/usr/share/applications/jetbrains-*.desktop
           key: jetbrains-cache-${{ steps.jetbrains-versions.outputs.toolbox_version }}-${{ steps.jetbrains-versions.outputs.rider_version }}
 
