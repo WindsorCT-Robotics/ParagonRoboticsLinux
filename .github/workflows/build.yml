@@ -74,9 +74,6 @@ jobs:
     permissions:
       contents: read
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v7
-
       - name: Restore OnShape SVG Logo cache
         id: processed-onshape-cache
         uses: actions/cache/restore@v6
@@ -280,44 +277,6 @@ jobs:
           # !! Add your recipes here
           - recipe.yml
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v7
-
-      - name: Restore OnShape SVG Logo cache
-        uses: actions/cache/restore@v6
-        with:
-          fail-on-cache-miss: true
-          path: |
-            files/system/usr/share/icons/hicolor/scalable/apps/com.onshape.app.svg
-          key: ${{ runner.os }}-onshape-logo-cache-v1
-
-      - name: Restore WPILib & VS Code cache
-        uses: actions/cache/restore@v6
-        with:
-          fail-on-cache-miss: true
-          path: |
-            files/system/usr/share/wpilib/${{ needs.wpilib-config.outputs.wpilib_year }}
-            files/system/usr/share/applications/AdvantageScope_WPILib_${{ needs.wpilib-config.outputs.wpilib_year }}.desktop
-            files/system/usr/share/applications/DataLogTool_${{ needs.wpilib-config.outputs.wpilib_year }}.desktop
-            files/system/usr/share/applications/Elastic_WPILib_${{ needs.wpilib-config.outputs.wpilib_year }}.desktop
-            files/system/usr/share/applications/Glass_${{ needs.wpilib-config.outputs.wpilib_year }}.desktop
-            files/system/usr/share/applications/OutlineViewer_${{ needs.wpilib-config.outputs.wpilib_year }}.desktop
-            files/system/usr/share/applications/SysId_${{ needs.wpilib-config.outputs.wpilib_year }}.desktop
-            files/system/usr/share/applications/WPIcal_${{ needs.wpilib-config.outputs.wpilib_year }}.desktop
-            files/system/usr/share/applications/WPILib_Documentation_${{ needs.wpilib-config.outputs.wpilib_year }}.desktop
-            files/system/usr/share/applications/WPILib_VS_Code_${{ needs.wpilib-config.outputs.wpilib_year }}.desktop
-            files/system/etc/apparmor.d/wpilib-advantagescope
-          key: processed-wpilib-${{ needs.wpilib-config.outputs.wpilib_version }}
-
-      - name: Restore JetBrains cache
-        uses: actions/cache/restore@v6
-        with:
-          fail-on-cache-miss: true
-          path: |
-            files/system/usr/share/JetBrains/
-            files/system/usr/share/applications/jetbrains-*.desktop
-          key: jetbrains-cache-${{ needs.jetbrains-versions.outputs.toolbox_version }}-${{ needs.jetbrains-versions.outputs.rider_version }}
-
       # Set up Vivaldi custom profile
       - name: Inject Team Vivaldi Configuration Profile
         run: |
@@ -371,17 +330,7 @@ jobs:
              "version": 1
           }
           EOF
-          
-      - name: Verify WPILib files exist
-        run: |
-          if [ -d "files/system/usr/share/wpilib/2027_alpha7" ]; then
-            echo "✓ WPILib directory found"
-            ls -la files/system/usr/share/wpilib/2027_alpha7/ | head -20
-          else
-            echo "✗ WPILib directory NOT found"
-            ls -la files/system/usr/share/ || echo "files/system/usr/share does not exist"
-          fi
-          
+
       # the build is fully handled by the reusable github action
       - name: Build Paragon Robotics Linux
         uses: blue-build/github-action@v1.13
