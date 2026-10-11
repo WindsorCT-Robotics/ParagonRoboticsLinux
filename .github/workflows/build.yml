@@ -81,6 +81,7 @@ jobs:
         id: processed-onshape-cache
         uses: actions/cache/restore@v6
         with:
+          fail-on-cache-miss: true
           path: |
             files/system/usr/share/icons/hicolor/scalable/apps/com.onshape.app.svg
           key: ${{ runner.os }}-onshape-logo-cache-v1
@@ -104,6 +105,7 @@ jobs:
         id: processed-frc-cache
         uses: actions/cache/restore@v6
         with:
+          fail-on-cache-miss: true
           path: |
             files/system/usr/share/wpilib/${{ needs.wpilib-config.outputs.wpilib_year }}
             files/system/usr/share/applications/AdvantageScope_WPILib_${{ needs.wpilib-config.outputs.wpilib_year }}.desktop
@@ -204,6 +206,7 @@ jobs:
         id: processed-jetbrains-cache
         uses: actions/cache/restore@v6
         with:
+          fail-on-cache-miss: true
           path: |
             files/system/usr/share/JetBrains/
             files/system/usr/share/applications/jetbrains-*.desktop
