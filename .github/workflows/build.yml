@@ -74,6 +74,9 @@ jobs:
     permissions:
       contents: read
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
       - name: Restore OnShape SVG Logo cache
         id: processed-onshape-cache
         uses: actions/cache/restore@v6
@@ -277,6 +280,9 @@ jobs:
           # !! Add your recipes here
           - recipe.yml
     steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+
       # Set up Vivaldi custom profile
       - name: Inject Team Vivaldi Configuration Profile
         run: |
