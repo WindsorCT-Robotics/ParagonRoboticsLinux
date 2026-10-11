@@ -22,7 +22,7 @@ if [ ! -d "$WPILIB_ROOT" ]; then
   echo "wpilib-bootstrap: ERROR — WPILib root tree not found at ${WPILIB_ROOT}"; exit 1
 fi
 
-mkdir -p "$(dirname "$SKEL_WPILIB")"
+mkdir -p "$SKEL_WPILIB"
 
 # VS Code user-data dir (created at image build, writable by students)
 SKEL_CODE="/etc/skel/.local/state/wpilib/${WPILIB_YEAR}/code"
@@ -49,7 +49,7 @@ chmod 4755 "${WPILIB_ROOT}/vscode/VSCode-linux-x64/chrome-sandbox"
 # symlink makes the pre-installed extensions accessible without write access
 # to /usr/share.
 mkdir -p "$SKEL_CODE"
-ln -sfn "${WPILIB_ROOT}/vscode/VSCode-linux-x64/data/extensions/*" "${SKEL_CODE}/extensions"
+ln -sfn ${WPILIB_ROOT}/vscode/VSCode-linux-x64/data/extensions/* "${SKEL_CODE}/extensions"
 
 # --- Seed Gradle dist zip (real file, not symlink — wrapper extracts into home) ---
 # Find the gradle zip in installUtils and derive the dist dir name from it.
@@ -60,7 +60,7 @@ fi
 DIST_DIR=$(basename "$GRADLE_ZIP" .zip)
 
 # Read distribution URL from gradle-wrapper.properties (glob the extension dir).
-GRADLE_WRAPPER_PROPS="${WPILIB_ROOT}/vscode/VSCode-linux-x64/data/extensions/wpilibsuite.vscode-wpilib-*/resources/gradle/shared/gradle/wrapper/gradle-wrapper.properties"
+GRADLE_WRAPPER_PROPS=${WPILIB_ROOT}/vscode/VSCode-linux-x64/data/extensions/wpilibsuite.vscode-wpilib-*/resources/gradle/shared/gradle/wrapper/gradle-wrapper.properties
 if [ -f "$GRADLE_WRAPPER_PROPS" ]; then
   DIST_URL=$(grep '^distributionUrl=' "$GRADLE_WRAPPER_PROPS" | sed 's/distributionUrl=//' | sed 's/\\//g' | sed 's/"//g')
   HASH_DIR=$(python3 -c "
