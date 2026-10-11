@@ -1,9 +1,9 @@
 #!/bin/bash
-# Post-build script: create home symlinks for the WPILib version tree in /usr/local.
+# Post-build script: create home symlinks for the WPILib version tree in /opt.
 # Runs after the 'files' module copies files/system/* into the image root.
-# The WPILib tree must already exist at /usr/local/share/wpilib/<WPILIB_YEAR>/;
+# The WPILib tree must already exist at /opt/wpilib/<WPILIB_YEAR>/;
 # this script creates a real directory under /etc/skel with subtree symlinks so
-# per-student home copies map correctly onto the read-only /usr/local tree.
+# per-student home copies map correctly onto the read-only /opt tree.
 set -euo pipefail
 
 # Read WPILib configuration from build-configuration.json
@@ -15,7 +15,7 @@ fi
 WPILIB_VERSION=$(jq -r '.wpilib.version' "$CONFIG_FILE")
 WPILIB_YEAR=$(jq -r '.wpilib.year' "$CONFIG_FILE")
 
-WPILIB_ROOT="/usr/local/share/wpilib/${WPILIB_YEAR}"
+WPILIB_ROOT="/opt/wpilib/${WPILIB_YEAR}"
 SKEL_WPILIB="/etc/skel/.local/share/wpilib/${WPILIB_YEAR}"
 
 if [ ! -d "$WPILIB_ROOT" ]; then
@@ -33,7 +33,7 @@ cat > "$SKEL_CODE/User/settings.json" << 'SETTINGS'
 }
 SETTINGS
 
-# Each link is a real directory containing subtree symlinks → /usr/local tree.
+# Each link is a real directory containing subtree symlinks → /opt tree.
 # Real dir (not single top-level symlink) so ~/logs/ extension writes work.
 for dir in advantagescope elastic icons maven jdk tools vendordeps documentation vscode systemcore; do
   ln -sfn "${WPILIB_ROOT}/${dir}" "${SKEL_WPILIB}/${dir}"
@@ -47,7 +47,7 @@ chmod 4755 "${WPILIB_ROOT}/vscode/VSCode-linux-x64/chrome-sandbox"
 # year-gated home directory while still having access to pre-installed extensions.
 # VS Code uses --extensions-dir to point to ~/.../code/extensions, so this
 # symlink makes the pre-installed extensions accessible without write access
-# to /usr/local.
+# to /opt.
 mkdir -p "$SKEL_CODE"
 ln -sfn "${WPILIB_ROOT}/vscode/VSCode-linux-x64/data/extensions/*" "${SKEL_CODE}/extensions"
 

@@ -80,7 +80,7 @@ jobs:
         uses: actions/cache/restore@v6
         with:
           path: |
-            files/system/usr/local/share/wpilib/${{ needs.wpilib-config.outputs.wpilib_year }}
+            files/system/opt/wpilib/${{ needs.wpilib-config.outputs.wpilib_year }}
             files/system/usr/share/applications/AdvantageScope_WPILib_${{ needs.wpilib-config.outputs.wpilib_year }}.desktop
             files/system/usr/share/applications/DataLogTool_${{ needs.wpilib-config.outputs.wpilib_year }}.desktop
             files/system/usr/share/applications/Elastic_WPILib_${{ needs.wpilib-config.outputs.wpilib_year }}.desktop
@@ -126,18 +126,18 @@ jobs:
               "$LAUNCHER"
           fi
 
-          # --- Move tree to ephemeral layer (/usr/local) ---
-          echo "Moving WPILib tree to /usr/local..."
-          mkdir -p "$GITHUB_WORKSPACE/files/system/usr/local/share/wpilib"
-          cp -a "$WPILIB_ROOT" "$GITHUB_WORKSPACE/files/system/usr/local/share/wpilib/${{ needs.wpilib-config.outputs.wpilib_year }}"
+          # --- Move tree to ephemeral layer (/opt) ---
+          echo "Moving WPILib tree to /opt..."
+          mkdir -p "$GITHUB_WORKSPACE/files/system/opt/wpilib"
+          cp -a "$WPILIB_ROOT" "$GITHUB_WORKSPACE/files/system/opt/wpilib/${{ needs.wpilib-config.outputs.wpilib_year }}"
 
           # --- Move installer-generated .desktop files to /usr/share/applications,
-          # rewriting per-user home paths to the image's /usr/local tree ---
+          # rewriting per-user home paths to the image's /opt tree ---
           echo "Moving WPILib desktop entries..."
           mkdir -p "$GITHUB_WORKSPACE/files/system/usr/share/applications"
           for f in "$HOME/.local/share/applications/"*_"${WPILIB_YEAR}".desktop; do
             [ -e "$f" ] || continue
-            sed "s|/home/[^/]*/\.local/share/wpilib/|/usr/local/share/wpilib/|g" "$f" \
+            sed "s|/home/[^/]*/\.local/share/wpilib/|/opt/wpilib/|g" "$f" \
               > "$GITHUB_WORKSPACE/files/system/usr/share/applications/$(basename "$f")"
           done
 
@@ -175,14 +175,14 @@ jobs:
         uses: actions/cache/restore@v6
         with:
           path: |
-            files/system/usr/local/share/JetBrains/
+            files/system/opt/JetBrains/
             files/system/usr/share/applications/jetbrains-*.desktop
           key: jetbrains-cache-${{ steps.jetbrains-versions.outputs.toolbox_version }}-${{ steps.jetbrains-versions.outputs.rider_version }}
 
       - name: Download and Install JetBrains Toolbox and Rider on Cache Miss
         if: steps.processed-jetbrains-cache.outputs.cache-hit != 'true'
         run: |
-          LOCAL_APPS="$GITHUB_WORKSPACE/files/system/usr/local/share/JetBrains"
+          LOCAL_APPS="$GITHUB_WORKSPACE/files/system/opt/JetBrains"
           mkdir -p "$LOCAL_APPS"
 
           echo "Downloading JetBrains Toolbox..."
@@ -203,8 +203,8 @@ jobs:
           Type=Application
           Name=JetBrains Rider
           Comment=Cross-Platform .NET IDE
-          Exec=/usr/local/share/JetBrains/apps/rider/bin/rider
-          Icon=/usr/local/share/JetBrains/apps/rider/bin/rider.svg
+          Exec=/opt/JetBrains/apps/rider/bin/rider
+          Icon=/opt/JetBrains/apps/rider/bin/rider.svg
           Terminal=false
           Categories=Development;IDE;
           StartupNotify=true
@@ -216,8 +216,8 @@ jobs:
           Type=Application
           Name=JetBrains Toolbox
           Comment=Manage JetBrains IDEs
-          Exec=/usr/local/share/JetBrains/Toolbox/bin/jetbrains-toolbox
-          Icon=/usr/local/share/JetBrains/Toolbox/bin/toolbox.svg
+          Exec=/opt/JetBrains/Toolbox/bin/jetbrains-toolbox
+          Icon=/opt/JetBrains/Toolbox/bin/toolbox.svg
           Terminal=false
           Categories=Development;IDE;
           StartupNotify=true
@@ -228,7 +228,7 @@ jobs:
         uses: actions/cache/save@v6
         with:
           path: |
-            files/system/usr/local/share/JetBrains/
+            files/system/opt/JetBrains/
             files/system/usr/share/applications/jetbrains-*.desktop
           key: jetbrains-cache-${{ steps.jetbrains-versions.outputs.toolbox_version }}-${{ steps.jetbrains-versions.outputs.rider_version }}
 
@@ -261,7 +261,7 @@ jobs:
         uses: actions/cache/restore@v6
         with:
           path: |
-            files/system/usr/local/share/wpilib/${{ needs.wpilib-config.outputs.wpilib_year }}
+            files/system/opt/wpilib/${{ needs.wpilib-config.outputs.wpilib_year }}
             files/system/usr/share/applications/AdvantageScope_WPILib_2027_alpha7.desktop
             files/system/usr/share/applications/DataLogTool_2027_alpha7.desktop
             files/system/usr/share/applications/Elastic_WPILib_2027_alpha7.desktop
@@ -277,7 +277,7 @@ jobs:
         uses: actions/cache/restore@v6
         with:
           path: |
-            files/system/usr/local/share/JetBrains/
+            files/system/opt/JetBrains/
             files/system/usr/share/applications/jetbrains-*.desktop
           key: jetbrains-cache-${{ steps.jetbrains-versions.outputs.toolbox_version }}-${{ steps.jetbrains-versions.outputs.rider_version }}
 
