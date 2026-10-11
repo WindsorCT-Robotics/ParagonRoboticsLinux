@@ -42,9 +42,35 @@ jobs:
           echo "WPILIB_VERSION=$WPILIB_VERSION"
           echo "WPILIB_YEAR=$WPILIB_YEAR"
 
+  jetbrains-versions:
+    name: Get latest JetBrains Toolbox and Rider versions
+    runs-on: ubuntu-latest
+    outputs:
+      toolbox_version: ${{ steps.jetbrains-versions.outputs.toolbox_version }}
+      rider_version: ${{ steps.jetbrains-versions.outputs.rider_version }}
+    steps:
+      - name: Get latest versions from JetBrains API
+        id: jetbrains-versions
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fetch = require('node-fetch');
+            const toolboxResponse = await fetch('https://data.services.jetbrains.com/products/releases?code=TBA&latest=true&type=release');
+            const toolboxData = await toolboxResponse.json();
+            const riderResponse = await fetch('https://data.services.jetbrains.com/products/releases?code=RD&latest=true&type=release');
+            const riderData = await riderResponse.json();
+
+            const toolboxVersion = toolboxData.TBA[0].version;
+            const riderVersion = riderData.RD[0].version;
+
+            return { toolbox_version: toolboxVersion, rider_version: riderVersion };
+          result-encoding: json
+
   prepare-cache:
     name: Prepare shared build caches
-    needs: wpilib-config
+    needs:
+      - wpilib-config
+      - jetbrains-versions
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -175,21 +201,6 @@ jobs:
           key: processed-wpilib-${{ needs.wpilib-config.outputs.wpilib_version }}
 
       # Cache and install latest JetBrains Toolbox and Rider apps
-      - name: Get latest JetBrains Toolbox and Rider versions
-        id: jetbrains-versions
-        run: |
-          TBA_JSON=$(curl -fsSL 'https://data.services.jetbrains.com/products/releases?code=TBA&latest=true&type=release')
-          RD_JSON=$(curl -fsSL 'https://data.services.jetbrains.com/products/releases?code=RD&latest=true&type=release')
-
-          TOOLBOX_VERSION=$(printf '%s' "$TBA_JSON" | jq -r '.TBA[0].version')
-          RIDER_VERSION=$(printf '%s' "$RD_JSON" | jq -r '.RD[0].version')
-
-          echo "toolbox_version=$TOOLBOX_VERSION" >> "$GITHUB_OUTPUT"
-          echo "rider_version=$RIDER_VERSION" >> "$GITHUB_OUTPUT"
-
-          echo "Discovered Live Toolbox Version: $TOOLBOX_VERSION"
-          echo "Discovered Live Rider Version: $RIDER_VERSION"
-
       - name: Restore JetBrains cache
         id: processed-jetbrains-cache
         uses: actions/cache/restore@v6
@@ -197,7 +208,7 @@ jobs:
           path: |
             files/system/usr/share/JetBrains/
             files/system/usr/share/applications/jetbrains-*.desktop
-          key: jetbrains-cache-${{ steps.jetbrains-versions.outputs.toolbox_version }}-${{ steps.jetbrains-versions.outputs.rider_version }}
+          key: jetbrains-cache-${{ needs.jetbrains-versions.outputs.toolbox_version }}-${{ needs.jetbrains-versions.outputs.rider_version }}
 
       - name: Download and Install JetBrains Toolbox and Rider on Cache Miss
         if: steps.processed-jetbrains-cache.outputs.cache-hit != 'true'
@@ -250,10 +261,13 @@ jobs:
           path: |
             files/system/usr/share/JetBrains/
             files/system/usr/share/applications/jetbrains-*.desktop
-          key: jetbrains-cache-${{ steps.jetbrains-versions.outputs.toolbox_version }}-${{ steps.jetbrains-versions.outputs.rider_version }}
+          key: jetbrains-cache-${{ needs.jetbrains-versions.outputs.toolbox_version }}-${{ needs.jetbrains-versions.outputs.rider_version }}
 
   bluebuild:
-    needs: prepare-cache
+    needs: 
+      - prepare-cache
+      - wpilib-config
+      - jetbrains-versions
     name: Build Paragon Robotics Linux
     runs-on: ubuntu-latest
     permissions:
@@ -300,7 +314,7 @@ jobs:
           path: |
             files/system/usr/share/JetBrains/
             files/system/usr/share/applications/jetbrains-*.desktop
-          key: jetbrains-cache-${{ steps.jetbrains-versions.outputs.toolbox_version }}-${{ steps.jetbrains-versions.outputs.rider_version }}
+          key: jetbrains-cache-${{ needs.jetbrains-versions.outputs.toolbox_version }}-${{ needs.jetbrains-versions.outputs.rider_version }}
 
       # Set up Vivaldi custom profile
       - name: Inject Team Vivaldi Configuration Profile
