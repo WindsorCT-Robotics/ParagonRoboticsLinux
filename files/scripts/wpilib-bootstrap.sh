@@ -48,7 +48,7 @@ chmod 4755 "${WPILIB_ROOT}/vscode/VSCode-linux-x64/chrome-sandbox"
 # VS Code uses --extensions-dir to point to ~/.../code/extensions, so this
 # symlink makes the pre-installed extensions accessible without write access
 # to /usr/share.
-mkdir -p "$SKEL_CODE"
+mkdir -p "$SKEL_CODE/extensions"
 ln -sfn ${WPILIB_ROOT}/vscode/VSCode-linux-x64/data/extensions/* "${SKEL_CODE}/extensions"
 
 # --- Seed Gradle dist zip (real file, not symlink — wrapper extracts into home) ---
@@ -62,7 +62,7 @@ DIST_DIR=$(basename "$GRADLE_ZIP" .zip)
 # Read distribution URL from gradle-wrapper.properties (glob the extension dir).
 GRADLE_WRAPPER_PROPS=${WPILIB_ROOT}/vscode/VSCode-linux-x64/data/extensions/wpilibsuite.vscode-wpilib-*/resources/gradle/shared/gradle/wrapper/gradle-wrapper.properties
 if [ -f "$GRADLE_WRAPPER_PROPS" ]; then
-  DIST_URL=$(grep '^distributionUrl=' "$GRADLE_WRAPPER_PROPS" | sed 's/distributionUrl=//' | sed 's/\\//g' | sed 's/"//g')
+  DIST_URL=$(grep '^distributionUrl=' $GRADLE_WRAPPER_PROPS | sed 's/distributionUrl=//' | sed 's/\\//g' | sed 's/"//g')
   HASH_DIR=$(python3 -c "
 import hashlib, sys
 n = int.from_bytes(hashlib.md5(sys.argv[1].encode()).digest(), 'big')
