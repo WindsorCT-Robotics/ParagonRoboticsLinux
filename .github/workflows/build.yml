@@ -7,6 +7,7 @@ on:
   push:
     paths-ignore: # don't rebuild if only documentation has changed
       - "**.md"
+      - "**.gitignore"
 
   pull_request:
   workflow_dispatch: # allow manually triggering builds
@@ -73,6 +74,9 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+    outputs:
+      wpilib_miss: ${{ steps.processed-frc-cache.outputs.cache-hit != 'true' }}
+      jetbrains_miss: ${{ steps.processed-jetbrains-cache.outputs.cache-hit != 'true' }}
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
@@ -387,3 +391,38 @@ jobs:
 
           # enabled by default, disable if your image is small and you want faster builds
           maximize_build_space: true
+
+  generate-iso:
+    name: Generate ISO for new WPILib Releases
+    needs:
+      - wpilib-config
+      - prepare-cache
+      - bluebuild
+    if: |
+      github.event_name != 'pull_request' &&
+      (needs.prepare-cache.outputs.wpilib_miss == 'true' || needs.prepare-cache.outputs.jetbrains_miss == 'true')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Install BlueBuild CLI
+        run: |
+          echo "Generating ISO for new WPILib or JetBrains release..."
+          podman run --pull always --rm ghcr.io/blue-build/cli:latest-installer | bash
+      
+      - name: Generate Paragon Robotics Linux ISO
+        run: |
+          sudo bluebuild generate-iso \
+            --iso-name "paragon-robotics-linux-${{ needs.wpilib-config.outputs.wpilib_version }}.iso" \
+            --output-dir "$GITHUB_WORKSPACE/artifacts" \
+            --platform linux/amd64 \
+            --build-driver podman \
+            --signing-driver cosign \
+            --run-driver podman \
+            image ghcr.io/windsorct-robotics/paragon-robotics-linux:latest
+      - name: Publish ISO as Release
+        uses: softprops/action-gh-release@v3.0.3
+        with:
+          name: "paragon-robotics-linux-${{ needs.wpilib-config.outputs.wpilib_version }}.iso"
+          generate_release_notes: true
+          files: "$GITHUB_WORKSPACE/artifacts/paragon-robotics-linux-${{ needs.wpilib-config.outputs.wpilib_version }}.iso"
