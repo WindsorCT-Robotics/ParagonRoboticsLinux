@@ -5,6 +5,8 @@ on:
         "00 06 * * *" # build at 06:00 UTC every day
         # (20 minutes after last ublue images start building)
   push:
+    branches : [ main ]
+    tags: [ "v*" ]
     paths-ignore: # don't rebuild if only documentation has changed
       - "**.md"
       - "**.gitignore"
@@ -399,12 +401,19 @@ jobs:
       - prepare-cache
       - bluebuild
     if: |
-      github.event_name != 'pull_request' &&
-      (needs.prepare-cache.outputs.wpilib_miss == 'true' || needs.prepare-cache.outputs.jetbrains_miss == 'true')
+      github.ref_type == 'tag'
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
+      - name: Maximize Build Space
+        uses: easimon/maximize-build-space@master
+        with:
+          remove-dotnet: 'true'
+          remove-haskell: 'true'
+          remove-android: 'true'
+          remove-codeql: 'true'
+
       - name: Install BlueBuild CLI
         run: |
           echo "Generating ISO for new WPILib or JetBrains release..."
@@ -426,3 +435,4 @@ jobs:
           name: "paragon-robotics-linux-${{ needs.wpilib-config.outputs.wpilib_version }}.iso"
           generate_release_notes: true
           files: "$GITHUB_WORKSPACE/artifacts/paragon-robotics-linux-${{ needs.wpilib-config.outputs.wpilib_version }}.iso"
+          
